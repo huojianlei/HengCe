@@ -1,0 +1,11 @@
+{
+  "/": "web/index.html",
+  "/app.mjs": "web/app.mjs",
+  "/chat-stream.mjs": "web/chat-stream.mjs",
+  "/import-data.mjs": "web/import-data.mjs",
+  "/report.mjs": "web/report.mjs",
+  "/style.css": "web/style.css",
+  "/fields.mjs": "web/fields.mjs",
+  "/experimental/entry.mjs": "experimental/entry.mjs",
+  "/template.xlsx": "templates/唯一输入模板.xlsx"
+}

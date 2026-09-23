@@ -1,0 +1,55 @@
+import {createRequire} from 'node:module';
+import fs from 'node:fs/promises';
+import {spawn} from 'node:child_process';
+import {once} from 'node:events';
+import path from 'node:path';
+const require=createRequire(import.meta.url);
+const dataDir=path.resolve(`desktop/qa/ui-run-${Date.now()}`);await fs.mkdir(dataDir,{recursive:true});
+const server=spawn(process.execPath,['desktop/server.mjs'],{env:{...process.env,FINAGENT_PORT:'0',FINAGENT_DATA_DIR:dataDir},stdio:['ignore','pipe','pipe']});
+server.stderr.resume();const [ready]=await once(server.stdout,'data');const base=JSON.parse(String(ready)).url;
+const {chromium}=require('C:/Users/LeiZhiBo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+const page=await browser.newPage({viewport:{width:1440,height:1000}});
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+try{
+ await page.goto(base);
+ await page.locator('#open-demo').click();
+ // 固定脚本数据（可复现）用于本 UI 回归；随机生成的核验由 experimental-check.mjs 覆盖。
+ const demo=page.getByRole('button',{name:'载入脚本演示数据（固定）',exact:true});
+ if(await demo.isVisible()){await demo.click();await page.locator('#message').filter({hasText:'已载入固定脚本数据'}).waitFor();}
+ await page.screenshot({path:'desktop/qa/dashboard.png',fullPage:true});
+ await page.getByRole('button',{name:'数据与参数',exact:false}).first().click();
+ await page.locator('#raw-text').evaluate((el)=>{el.closest('details').open=true;});
+ await page.locator('#raw-text').fill(await fs.readFile('desktop/experimental/reference.csv','utf8'));
+ await page.getByRole('button',{name:'解析并替换当前数据',exact:true}).click();
+ await page.locator('#message').filter({hasText:'数据已解析并替换'}).waitFor();
+ await page.getByRole('button',{name:'运行预算分析',exact:false}).click();
+ await page.locator('#message').filter({hasText:'分析完成，JSON 已保存'}).waitFor();
+ await page.reload();
+ await page.getByRole('button',{name:'数据与参数',exact:false}).first().click();
+ if(await page.locator('#company').inputValue()!=='青禾制造有限公司')throw Error('Input snapshot not restored after reload');
+ await page.screenshot({path:'desktop/qa/inputs.png',fullPage:true});
+ await page.getByRole('button',{name:'报告中心',exact:false}).first().click();
+ const frame=page.frameLocator('#report-preview');
+ await frame.getByText('智能预算差异分析',{exact:false}).first().waitFor();
+ const html=await page.locator('#report-preview').evaluate(el=>'<!doctype html>'+el.contentDocument.documentElement.outerHTML);
+ await fs.writeFile('desktop/qa/report-preview.html',html);
+ const report=await browser.newPage();await report.setContent(html,{waitUntil:'load'});
+ await report.pdf({path:'desktop/qa/report-print.pdf',format:'A4',printBackground:true,preferCSSPageSize:true});
+ await page.getByRole('button',{name:'保存 HTML + JSON',exact:true}).click();
+ await page.locator('#message').filter({hasText:'已保存 HTML 与 JSON'}).waitFor();
+ await page.getByRole('button',{name:'复核与整改',exact:false}).first().click();
+ await page.locator('#revision-subject').selectOption({label:'直接材料'});
+ await page.locator('#revision-period').fill('2026-Q2');await page.locator('#revision-amount').fill('450000');await page.locator('#revision-reason').fill('测试：供应合同修订，未来材料预算调整');
+ await page.getByRole('button',{name:'审阅并批准修订',exact:true}).click();
+ await page.getByRole('button',{name:'确认批准',exact:true}).click();
+ await page.locator('#message').filter({hasText:'预算修订已批准'}).waitFor();
+ await page.screenshot({path:'desktop/qa/review.png',fullPage:true});
+ await page.setViewportSize({width:1024,height:768});
+ await page.getByRole('button',{name:'分析总览',exact:false}).first().click();
+ const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
+ await page.screenshot({path:'desktop/qa/dashboard-1024.png',fullPage:true});
+ if(overflow)throw Error('1024px viewport has horizontal page overflow');
+ if(errors.length)throw Error(errors.join('\n'));
+ console.log(JSON.stringify({ok:true,errors,export:true,approval:true,viewport1024:true}));
+}finally{await browser.close();server.kill();}

@@ -1,0 +1,22 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {analyze,parseText} from '../engine.mjs';
+import {reportHTML} from '../web/report.mjs';
+import {scaled} from '../web/fields.mjs';
+const fixture=JSON.parse(await fs.readFile(new URL('../experimental/demo.json',import.meta.url)));
+const input=()=>structuredClone(fixture);
+test('audited core: actual 520000 minus budget 380000 yields 140000 unfavorable, not zero',()=>{const r=analyze(input());const row=r.variance.xiang.find(x=>x.kemu==='直接材料');assert.equal(row.chae_fen,14000000);assert.equal(row.fa,'A');assert.equal(row.yujing,'红');assert.equal(row.gundong_fen,null);assert.equal(r.decisions.find(x=>x.kemu==='直接材料').panduan,'双环');});
+// Quarterly A applies enterprise 1% then the 0.5% industry-difference multiplier, each rounded.
+test('rolling output preserves actuals and chains future growth',()=>{const r=analyze(input()).rolling[0];assert.equal(r.qijian_mingxi[0].shuzhi_fen,102000000);assert.equal(r.qijian_mingxi[1].shuzhi_fen,131956500);assert.equal(r.qijian_mingxi[2].shuzhi_fen,133942445);});
+test('closed-period missing actual blocks analysis',()=>{const f=input();f.config.period='2026-Q2';assert.throws(()=>analyze(f),/缺实际数/);});
+test('duplicate records cannot be silently counted twice',()=>{const f=input();f.records.shishi.push(f.records.shishi[0]);assert.throws(()=>analyze(f),/重复记录/);});
+test('explicit historical baseline is used independently of refreshed rolling forecast',()=>{const f=input();f.baselines=[{kemu:'营业收入',period:'2026-Q1',amount:110000000}];const row=analyze(f).variance.xiang.find(x=>x.kemu==='营业收入');assert.equal(row.jizhun_fen,110000000);assert.equal(row.chae_fen,-8000000);});
+test('custom warning tier creates an action and retains its color',()=>{const f=input();f.config.tiers=[{ming_cheng:'紧急',yu_fen:1000,yan_se:'#ff0011'}];const r=analyze(f);assert.ok(r.correction.qingdan.some(x=>x.miaoshu.includes('紧急')));assert.equal(r.variance.xiang[0].yan_se,'#ff0011');});
+test('missing BSC and KPI remain unavailable, not zero or invented scores',()=>{const f=input();f.bsc=null;f.kpi={};const r=analyze(f);assert.equal(r.bsc,null);assert.ok(Object.values(r.kpi).every(x=>x===null));});
+test('BSC weights must sum to 100',()=>{const f=input();f.bsc.quanzhong=[40,40,40,40];assert.throws(()=>analyze(f));});
+test('future revision leaves fixed budgets and actuals unchanged',()=>{const f=input();const r=analyze(f,[{kemu:'直接材料',period:'2026-Q2',amount:45000000}]);const q=r.rolling.find(x=>x.kemu==='直接材料').qijian_mingxi;assert.equal(q[0].shuzhi_fen,52000000);assert.equal(q[1].shuzhi_fen,45000000);assert.equal(q[1].chushi_yusuan_fen,42000000);assert.deepEqual(f,input());});
+test('JSON result round-trips without nonfinite numbers or markdown output',()=>{const r=analyze(input());assert.deepEqual(JSON.parse(JSON.stringify(r)),r);assert.equal(r.md,undefined);});
+test('report escapes untrusted company and embeds complete charts without external dependencies',()=>{const r=analyze(input());r.meta.company='<script>alert(1)</script>';const html=reportHTML(r);assert.ok(!html.includes('<script>'));assert.ok(html.includes('&lt;script&gt;'));assert.ok(html.includes('风险预警'));assert.ok(html.includes('交叉项残差'));assert.ok(html.includes('@media print'));assert.ok(!html.includes('<script src='));});
+test('UI decimal conversion is exact; no accidental zero for blank input',()=>{assert.equal(scaled('0.29','金额'),29);assert.equal(scaled('','金额'),null);assert.equal(scaled('-1.23','增长率'),-123);assert.throws(()=>scaled('1.234','金额'));assert.throws(()=>scaled('1.5','数量',1));});
+test('invalid source rows remain visible and block analysis',()=>{const r=parseText('数据类别,统计周期,数据科目,数值,单位,数据来源,更新时间,备注\n预算基础,2026-Q1,营业收入,,元,测试,2026-01-01,');assert.equal(r.jujue.length,1);});

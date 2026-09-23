@@ -1,0 +1,18 @@
+{
+  "yusuan": [
+    {
+      "qijian": "2026-01",
+      "jine_fen": 398117895
+    },
+    {
+      "qijian": "2026-02",
+      "jine_fen": 147656242
+    }
+  ],
+  "shiji": [],
+  "shezhi": {
+    "zhouqi": "月度",
+    "zengzhanglv_jidian": -158,
+    "hangye_xiuzheng": "B"
+  }
+}

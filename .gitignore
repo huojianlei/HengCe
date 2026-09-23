@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+node_modules/
+desktop/qa/
+dist/
+临时/
+*.inspect.ndjson

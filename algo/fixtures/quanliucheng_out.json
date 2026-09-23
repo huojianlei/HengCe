@@ -1,0 +1,320 @@
+{
+  "duibi_biao": [
+    {
+      "qijian": "2026-Q1",
+      "kemu": "营收",
+      "fangxiang": "收入类",
+      "chushi_fen": 22000000,
+      "gundong_fen": 21000000,
+      "shiji_fen": 21000000,
+      "jizhun_fen": 21000000,
+      "chae_fen": 0,
+      "chalv_bps": 0,
+      "fa": "—",
+      "yujing": "无"
+    },
+    {
+      "qijian": "2026-Q1",
+      "kemu": "可控成本",
+      "fangxiang": "成本类",
+      "chushi_fen": 10000000,
+      "gundong_fen": null,
+      "shiji_fen": 10500000,
+      "jizhun_fen": 10000000,
+      "chae_fen": 500000,
+      "chalv_bps": 500,
+      "fa": "A",
+      "yujing": "黄"
+    },
+    {
+      "qijian": "2026-Q1",
+      "kemu": "期间费用",
+      "fangxiang": "成本类",
+      "chushi_fen": 2000000,
+      "gundong_fen": null,
+      "shiji_fen": 2200000,
+      "jizhun_fen": 2000000,
+      "chae_fen": 200000,
+      "chalv_bps": 1000,
+      "fa": "A",
+      "yujing": "红"
+    },
+    {
+      "qijian": "2026-Q1",
+      "kemu": "采购成本",
+      "fangxiang": "成本类",
+      "chushi_fen": 8000000,
+      "gundong_fen": null,
+      "shiji_fen": 8500000,
+      "jizhun_fen": 8000000,
+      "chae_fen": 500000,
+      "chalv_bps": 625,
+      "fa": "A",
+      "yujing": "黄"
+    }
+  ],
+  "yujing_huizong": {
+    "hong_shu": 1,
+    "huang_shu": 2,
+    "wu_shu": 1,
+    "wufa_shu": 0
+  },
+  "bingtu": {
+    "mokuai_lie": [
+      {
+        "mokuai": "收入模块",
+        "chae_fen": 0,
+        "fa": "—",
+        "zhanbi_bps": 0,
+        "hang_shu": 1
+      },
+      {
+        "mokuai": "成本模块",
+        "chae_fen": 500000,
+        "fa": "A",
+        "zhanbi_bps": 4167,
+        "hang_shu": 1
+      },
+      {
+        "mokuai": "费用模块",
+        "chae_fen": 200000,
+        "fa": "A",
+        "zhanbi_bps": 1667,
+        "hang_shu": 1
+      },
+      {
+        "mokuai": "采购模块",
+        "chae_fen": 500000,
+        "fa": "A",
+        "zhanbi_bps": 4167,
+        "hang_shu": 1
+      }
+    ],
+    "weiguishu": {
+      "zhanbi_bps": 0,
+      "hang_shu": 0
+    },
+    "jing_heji_fen": 1200000,
+    "hexin_mokuai": "成本模块"
+  },
+  "zhexian": [
+    {
+      "qijian": "2026-Q1",
+      "zhuangtai": "已届满",
+      "shuzhi_fen": 21000000,
+      "chushi_yusuan_fen": 22000000
+    },
+    {
+      "qijian": "2026-Q2",
+      "zhuangtai": "剩余期",
+      "shuzhi_fen": 22331100,
+      "chushi_yusuan_fen": 22000000
+    },
+    {
+      "qijian": "2026-Q3",
+      "zhuangtai": "剩余期",
+      "shuzhi_fen": 22554411,
+      "chushi_yusuan_fen": 22000000
+    },
+    {
+      "qijian": "2026-Q4",
+      "zhuangtai": "剩余期",
+      "shuzhi_fen": 22779955,
+      "chushi_yusuan_fen": 22000000
+    }
+  ],
+  "relitu": {
+    "qijian_lie": [
+      "2026-Q1"
+    ],
+    "kemu_lie": [
+      "可控成本",
+      "期间费用",
+      "营收",
+      "采购成本"
+    ],
+    "juzhen": [
+      [
+        500,
+        1000,
+        0,
+        625
+      ]
+    ]
+  },
+  "bsc_block": {
+    "caijing_defen": 75,
+    "kehu_defen": 80,
+    "neibu_defen": 70,
+    "xuexi_defen": 60,
+    "quanzhong": [
+      40,
+      30,
+      20,
+      10
+    ],
+    "zongfen": 74,
+    "dengji": "合格"
+  },
+  "kpi_block": [
+    {
+      "mingcheng": "营收达成率",
+      "zhi": 9545
+    },
+    {
+      "mingcheng": "成本控制率",
+      "zhi": 10500
+    },
+    {
+      "mingcheng": "费用偏差率",
+      "zhi": 1000
+    },
+    {
+      "mingcheng": "毛利率",
+      "zhi": 5000
+    },
+    {
+      "mingcheng": "净利润率",
+      "zhi": 3000
+    },
+    {
+      "mingcheng": "销售利润率",
+      "zhi": 4000
+    },
+    {
+      "mingcheng": "资产周转率",
+      "zhi": 2625
+    },
+    {
+      "mingcheng": "资金周转率",
+      "zhi": 9767
+    },
+    {
+      "mingcheng": "采购成本变动率",
+      "zhi": 625
+    },
+    {
+      "mingcheng": "供应链履约率",
+      "zhi": 9500
+    },
+    {
+      "mingcheng": "产能利用率",
+      "zhi": 8500
+    },
+    {
+      "mingcheng": "交付周期",
+      "zhi": 7
+    },
+    {
+      "mingcheng": "客户满意度",
+      "zhi": 9000
+    },
+    {
+      "mingcheng": "业务完成进度",
+      "zhi": 7500
+    },
+    {
+      "mingcheng": "异常事项数量",
+      "zhi": 3
+    }
+  ],
+  "suyuan_block": {
+    "xiang": [
+      {
+        "kpi_mingcheng": "采购成本变动率",
+        "yingxianglv_bps": 625,
+        "shuzhi_fangxiang": "上升",
+        "zuoyong": "负向作用",
+        "zhanbi_bps": 2143
+      },
+      {
+        "kpi_mingcheng": "交付周期",
+        "yingxianglv_bps": 1667,
+        "shuzhi_fangxiang": "上升",
+        "zuoyong": "负向作用",
+        "zhanbi_bps": 5715
+      },
+      {
+        "kpi_mingcheng": "产能利用率",
+        "yingxianglv_bps": 625,
+        "shuzhi_fangxiang": "上升",
+        "zuoyong": "正向作用",
+        "zhanbi_bps": 2143
+      }
+    ],
+    "zhengxiang_top3": [
+      "产能利用率"
+    ],
+    "fuxiang_top3": [
+      "交付周期",
+      "采购成本变动率"
+    ],
+    "yingxiang_fenmu_bps": 2917
+  },
+  "panduan_block": {
+    "panduan": "混合纠错模式",
+    "qingxing": 4,
+    "shenpi": true
+  },
+  "zhenggai_block": {
+    "qingdan": [
+      {
+        "leixing": "预算修订案",
+        "youxianji": "高",
+        "zeren_mokuai": "成本模块",
+        "kemu": "",
+        "qijian": "",
+        "miaoshu": "判定 混合纠错模式：预算修订案（人工审批后下周期生效）",
+        "shenpi": true,
+        "zhuangtai": "待整改"
+      },
+      {
+        "leixing": "强制整改",
+        "youxianji": "高",
+        "zeren_mokuai": "费用模块",
+        "kemu": "期间费用",
+        "qijian": "2026-Q1",
+        "miaoshu": "2026-Q1 期间费用 差额 2,000.00 元 预警 红",
+        "shenpi": false,
+        "zhuangtai": "待整改"
+      },
+      {
+        "leixing": "关注整改",
+        "youxianji": "中",
+        "zeren_mokuai": "成本模块",
+        "kemu": "可控成本",
+        "qijian": "2026-Q1",
+        "miaoshu": "2026-Q1 可控成本 差额 5,000.00 元 预警 黄",
+        "shenpi": false,
+        "zhuangtai": "待整改"
+      },
+      {
+        "leixing": "关注整改",
+        "youxianji": "中",
+        "zeren_mokuai": "采购模块",
+        "kemu": "采购成本",
+        "qijian": "2026-Q1",
+        "miaoshu": "2026-Q1 采购成本 差额 5,000.00 元 预警 黄",
+        "shenpi": false,
+        "zhuangtai": "待整改"
+      },
+      {
+        "leixing": "关注整改",
+        "youxianji": "中",
+        "zeren_mokuai": "成本模块",
+        "kemu": "",
+        "qijian": "",
+        "miaoshu": "积木核心问题模块：成本模块（不利差异最大，优先整改）",
+        "shenpi": false,
+        "zhuangtai": "待整改"
+      }
+    ],
+    "gao_shu": 2,
+    "zhong_shu": 3,
+    "di_shu": 0,
+    "zong_shu": 5,
+    "daizhenggai_shu": 5,
+    "jinxingzhong_shu": 0,
+    "wancheng_shu": 0
+  }
+}

@@ -1,0 +1,34 @@
+import {createRequire} from 'node:module';
+import fs from 'node:fs/promises';
+import {spawn} from 'node:child_process';
+import {once} from 'node:events';
+import path from 'node:path';
+const require=createRequire(import.meta.url);
+const {chromium}=require('C:/Users/LeiZhiBo/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const root=path.resolve('.');const dataDir=path.join(root,'desktop/qa/1.0.5界面验收');await fs.mkdir(dataDir,{recursive:true});
+const server=spawn(process.execPath,['desktop/server.mjs'],{cwd:root,env:{...process.env,FINAGENT_DATA_DIR:dataDir,FINAGENT_PYTHON:'D:/dev-env/Python312/python.exe',TEMP:dataDir,TMP:dataDir,PYTHONDONTWRITEBYTECODE:'1'},stdio:['ignore','pipe','pipe']});
+server.stderr.resume();const [ready]=await once(server.stdout,'data');const base=JSON.parse(String(ready)).url;
+const context=await chromium.launchPersistentContext(path.join(dataDir,'浏览器缓存'),{headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',viewport:{width:1440,height:900}});
+const page=context.pages()[0];const errors=[];page.on('pageerror',e=>errors.push(e.message));
+try{
+ await page.goto(base);
+ await page.getByRole('button',{name:'数据与参数',exact:false}).first().click();
+ if(await page.locator('#files').getAttribute('accept')!=='.xlsx')throw Error('输入控件仍允许旧文件格式');
+ const fixture=path.join(root,'algo/fixtures/唯一模板-月度-主体甲.xlsx');
+ await page.locator('#files').setInputFiles(fixture);
+ await page.locator('#import-summary').getByText('已接收 1710 行',{exact:false}).waitFor({timeout:15000});
+ await page.locator('#import-mode').selectOption('append');
+ await page.locator('#files').setInputFiles(path.join(root,'algo/fixtures/唯一模板-季度-主体乙.xlsx'));
+ await page.locator('#excel-group option').nth(1).waitFor({state:'attached',timeout:15000});
+ if(await page.locator('#excel-group option').count()!==2)throw Error('多主体导入没有形成两组');
+ await page.locator('#excel-group').selectOption('1');
+ await page.locator('#import-summary').getByText('已接收 570 行',{exact:false}).waitFor({timeout:15000});
+ await page.locator('#excel-group').selectOption('0');
+ await page.getByRole('button',{name:'分析本批全部主体与情景'}).click();
+ await page.locator('#message').getByText('已分别完成 2 组分析',{exact:false}).waitFor({timeout:30000});
+ await page.screenshot({path:path.join(dataDir,'多主体导入与分析.png'),fullPage:true});
+ await page.setViewportSize({width:1024,height:768});
+ if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('1024px 页面出现横向溢出');
+ if(errors.length)throw Error(errors.join('；'));
+ console.log(JSON.stringify({ok:true,groups:2,batch:2,viewport1024:true,pageErrors:0}));
+}finally{await context.close();server.kill();}

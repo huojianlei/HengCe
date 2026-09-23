@@ -1,0 +1,8 @@
+import {setInput,runAnalysis,work,show,tab} from '../app.mjs';
+const panel=document.createElement('details');panel.className='card';
+panel.innerHTML=`<summary>种子化演示 · Excel 全流程</summary><p>同一种子、主体和情景生成相同数据。所有实际数、采购数据和行业参考值均为占位。</p><div class="form-grid"><label>固定种子<input id="excel-seed" type="number" value="20260923" min="0" max="4294967295"></label><label>主体名称<input id="excel-entity" value="主体甲"></label><label>情景名称<input id="excel-scenario" value="基础情景"></label><label>期间粒度<select id="excel-grain"><option>月度</option><option>季度</option></select></label></div><div class="inline-actions"><button id="demo-run" class="primary">生成 Excel 并运行分析</button><button id="demo-export" class="secondary">导出 Excel 给老师查看</button></div><p>生成时先核验三表与明细，再预跑分析。导出的 Excel 可直接拖回输入区。BSC、KPI 等专业参数仍需补充。</p>`;
+document.querySelector('#inputs .card').before(panel);
+const $=id=>document.getElementById(id);
+async function generate(){const boot=await(await fetch('/api/bootstrap')).json();const response=await fetch('/api/demo-excel',{method:'POST',headers:{'Content-Type':'application/json','X-Finagent-Token':boot.token},body:JSON.stringify({seed:Number($('excel-seed').value),entity:$('excel-entity').value,scenario:$('excel-scenario').value,grain:$('excel-grain').value})});const r=await response.json();if(!response.ok)throw new Error(r.error);return r;}
+$('demo-run').onclick=()=>work('正在生成并核验 Excel…',async()=>{const r=await generate();setInput(r.input);await runAnalysis();show(`分析完成；已核验 ${r.checks} 项，Excel：${r.file}`);});
+$('demo-export').onclick=()=>work('正在生成并核验 Excel…',async()=>{const r=await generate();show(`已导出：${r.file}。可用 Excel 查看后拖回导入区。`);tab('inputs');});

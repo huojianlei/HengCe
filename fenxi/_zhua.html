@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>kb2 检索结果分表</title>
+    <style>/*
+ * Default — PDF theme for formal documents
+ *
+ * Color palette: black/grey, no accent color
+ * Font: Songti SC (body) + Heiti SC (headings)
+ * Best for: legal documents, trademark filings, contracts, formal reports
+ *
+ * This is the original built-in theme from md_to_pdf.py, extracted for reference.
+ */
+
+/* Restrict 'Menlo' to Latin/ASCII range so CJK characters in inline code
+ * don't get marked as Menlo (which has no CJK glyphs). Without this, the
+ * generated PDF references Menlo for CJK chars, and strict PDF readers
+ * (macOS Preview, some print drivers) show blanks instead of falling back.
+ * Chrome falls back automatically; Preview does not. The unicode-range
+ * trick forces weasyprint to skip Menlo for CJK and use the next font in
+ * the chain (PingFang SC → Heiti SC → Songti SC) which has CJK glyphs. */
+@font-face {
+    font-family: 'Menlo';
+    src: local('Menlo');
+    unicode-range: U+0020-007F, U+00A0-00FF, U+2000-206F, U+2070-209F, U+20A0-20CF, U+2100-214F;
+}
+@font-face {
+    font-family: 'Menlo';
+    src: local('Menlo Bold');
+    font-weight: bold;
+    unicode-range: U+0020-007F, U+00A0-00FF, U+2000-206F, U+2070-209F, U+20A0-20CF, U+2100-214F;
+}
+
+@page {
+    size: A4;
+    margin: 2.5cm 2cm 2cm 2cm;
+    @bottom-center {
+        content: counter(page) " / " counter(pages);
+        font-family: 'Songti SC', 'SimSun', 'STSong', 'Noto Serif CJK SC', serif;
+        font-size: 9pt;
+        color: #666;
+    }
+}
+
+body {
+    font-family: 'Songti SC', 'SimSun', 'STSong', 'Noto Serif CJK SC', serif;
+    font-size: 11.5pt;
+    line-height: 1.6;
+    color: #000;
+    width: 100%;
+}
+
+h1 {
+    font-family: 'Heiti SC', 'SimHei', 'STHeiti', 'Noto Sans CJK SC', sans-serif;
+    font-size: 17pt;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 1.5em;
+}
+
+/* Heading scale: each level visibly larger than body (11.5pt) AND visually
+ * distinct from adjacent levels. Font fallback chain widened to include
+ * PingFang SC and system-ui in case 'Heiti SC' is not registered with
+ * fontconfig (common on weasyprint installs).
+ *
+ * Size unity rule: all body-adjacent text (inline code, table, pre)
+ * stays within 0.5-1pt of body so nothing reads as "noticeably smaller".
+ */
+h2 {
+    font-family: 'Heiti SC', 'PingFang SC', 'SimHei', 'STHeiti', 'Noto Sans CJK SC', system-ui, sans-serif;
+    font-size: 15pt;
+    font-weight: bold;
+    margin-top: 1.5em;
+    margin-bottom: 0.8em;
+    color: #000;
+}
+
+h3 {
+    font-family: 'Heiti SC', 'PingFang SC', 'SimHei', 'STHeiti', 'Noto Sans CJK SC', system-ui, sans-serif;
+    font-size: 13pt;
+    font-weight: bold;
+    margin-top: 1.3em;
+    margin-bottom: 0.5em;
+    color: #000;
+}
+
+h4 {
+    font-family: 'Heiti SC', 'PingFang SC', 'SimHei', 'STHeiti', 'Noto Sans CJK SC', system-ui, sans-serif;
+    font-size: 12.5pt;
+    font-weight: bold;
+    margin-top: 1.1em;
+    margin-bottom: 0.4em;
+    color: #1a1a1a;
+}
+
+/* h5: still distinct from body. Combine size bump (+0.5pt) with left border
+ * so the heading visually jumps out even when the size delta is subtle.
+ */
+h5 {
+    font-family: 'Heiti SC', 'PingFang SC', 'SimHei', 'STHeiti', 'Noto Sans CJK SC', system-ui, sans-serif;
+    font-size: 12pt;
+    font-weight: bold;
+    margin-top: 1em;
+    margin-bottom: 0.35em;
+    padding-left: 0.5em;
+    border-left: 3px solid #888;
+    color: #1a1a1a;
+}
+
+h6 {
+    font-family: 'Heiti SC', 'PingFang SC', 'SimHei', 'STHeiti', 'Noto Sans CJK SC', system-ui, sans-serif;
+    font-size: 11.5pt;
+    font-weight: bold;
+    margin-top: 0.8em;
+    margin-bottom: 0.25em;
+    color: #444;
+    font-style: italic;
+}
+
+p {
+    margin: 0.8em 0;
+    text-align: justify;
+}
+
+ul, ol {
+    margin: 0.8em 0;
+    padding-left: 2em;
+}
+
+li {
+    margin: 0.4em 0;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    font-size: 11pt;
+    table-layout: fixed;
+}
+
+/* Keep table rows intact when paginating: prevents a single <tr> from being
+ * split across page boundaries (cell content cut mid-line, no header repeat).
+ * Trade-off: short rows that don't fit at page bottom get pushed to next page,
+ * leaving some white space at the bottom — readability > compactness. */
+tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+/* Repeat <thead> on each page when a table spans multiple pages. */
+thead {
+    display: table-header-group;
+}
+
+th, td {
+    border: 1px solid #666;
+    padding: 8px 6px;
+    text-align: left;
+    overflow-wrap: break-word;
+    word-break: normal;
+}
+
+th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+}
+
+/* Neutralize pandoc's auto-emitted <col style="width:X%"> based on dash counts
+ * in the markdown separator row. Pandoc treats `| ----- | --- |` as a column-
+ * width hint and inlines `style="width: 17%"` etc on each <col>. Inline styles
+ * beat external stylesheets at equal specificity, so without `!important` no
+ * `td:first-child { width: ... }` rule can recover. With this neutralizer
+ * weasyprint falls back to `table-layout: fixed` equal width allocation,
+ * which for typical 4-col tables gives 25% per column — enough for short
+ * CJK labels like `4/28（周二）下午` to render on one line.
+ *
+ * Authors who really want explicit widths can still write raw HTML
+ * `<colgroup>` directly in markdown — that overrides this rule when needed. */
+table colgroup col {
+    width: auto !important;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #ccc;
+    margin: 1.5em 0;
+}
+
+code {
+    font-family: 'Menlo', 'Songti SC', 'Heiti SC', 'SimSun', 'PingFang SC', 'Noto Sans CJK SC', monospace;
+    background: #f5f5f5;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 11pt;
+}
+
+pre {
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin: 1em 0;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+pre code {
+    font-family: 'Menlo', 'Songti SC', 'Heiti SC', 'SimSun', 'PingFang SC', 'Noto Sans CJK SC', monospace;
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: 10.5pt;
+    line-height: 1.5;
+}
+
+/* CJK code blocks converted to styled divs by preprocessor.
+   Uses inherit to reuse body's CJK font (weasyprint may not find PingFang SC). */
+.cjk-code-block {
+    font-family: inherit;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin: 1em 0;
+    font-size: 11pt;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ===== cjk-auto override: content-driven column widths =====
+ *
+ * Default theme uses table-layout: fixed for equal-width columns (safer when
+ * cells have similar content). For multi-column tables with very different
+ * content lengths (e.g. # / 场次 / 日期 / 金额 where # is 1 char and 场次 is
+ * 15+ chars), fixed equal-width forces narrow column for long content and
+ * triggers CJK mid-bracket breaks.
+ *
+ * Override: table-layout: auto + every cell nowrap → weasyprint computes
+ * each column's min-content width from actual cell content, allocates
+ * proportionally. !important needed because md_to_pdf.py auto-injects a
+ * fixed-layout patch AFTER theme load.
+ */
+table {
+    table-layout: auto !important;
+    width: 100% !important;
+}
+table td, table th {
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+}
+
+/* 本文档覆盖（Chrome 出血修复） */
+@page { margin: 2cm 1.2cm 2cm 1.2cm; }
+table { border-collapse: collapse; width: calc(100% - 10pt); }
+td, th { word-break: break-all; overflow-wrap: normal; }
+</style>
+</head>
+<body>
+<h2>表一 · 收入类</h2><h3>计算结果</h3><table><colgroup><col style="width:22%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"></colgroup><thead><tr><th>科目</th><th>预算(元)</th><th>实际(元)</th><th>差额(元)</th><th>差异率</th><th>F/A</th><th>预警</th></tr></thead><tbody><tr><td>营收</td><td>195,000.00</td><td>212,355.00</td><td>17,355.00</td><td>8.90%</td><td>F</td><td>黄</td></tr><tr><td>服务收入</td><td>60,000.00</td><td>59,160.00</td><td>-840.00</td><td>1.40%</td><td>A</td><td>无</td></tr><tr><td>其他收入</td><td>37,000.00</td><td>43,660.00</td><td>6,660.00</td><td>18.00%</td><td>F</td><td>红</td></tr></tbody></table><h3>kb2 检索条文（向量库直出，全文）</h3><table><colgroup><col style="width:20%"><col style="width:13%"><col style="width:12%"><col style="width:9%"><col style="width:46%"></colgroup><thead><tr><th>来源提示词</th><th>条文定位</th><th>命中路</th><th>RRF 分</th><th>条文原文（全文）</th></tr></thead><tbody><tr><td>红预警-其他收入</td><td>302-21</td><td>xiangliang</td><td>0.0164</td><td>成本差异的计算与分析一般按成本或费用项目进行。</td></tr><tr><td>红预警-其他收入</td><td>801-24</td><td>xiangliang</td><td>0.0161</td><td>全面预算管理报告的内容一般包括预算目标制定与分解、预算执行差异分析以及预算考评等。</td></tr><tr><td>红预警-其他收入</td><td>802-24</td><td>xiangliang</td><td>0.0159</td><td>预算分析和评价主要提供多种预算分析模型，实现在预算执行的数据基础上，对预算数和实际发生数进行多期间、多层次、多角度的预算分析，最终完成预算的业绩评价，为绩效考核提供数据基础。预算分析和评价的输入信息一般包括预算指标及预算执行情况，以及业绩评价的标准与考核办法等数据。企业应建立差异计算模型，- 8 -实现预算差异的计算，辅助实现差异成因分析过程，最终输出部门、期间、层级等多维度的预算差异分析报告等。</td></tr><tr><td>黄预警-营收</td><td>802-24</td><td>xiangliang</td><td>0.0164</td><td>预算分析和评价主要提供多种预算分析模型，实现在预算执行的数据基础上，对预算数和实际发生数进行多期间、多层次、多角度的预算分析，最终完成预算的业绩评价，为绩效考核提供数据基础。预算分析和评价的输入信息一般包括预算指标及预算执行情况，以及业绩评价的标准与考核办法等数据。企业应建立差异计算模型，- 8 -实现预算差异的计算，辅助实现差异成因分析过程，最终输出部门、期间、层级等多维度的预算差异分析报告等。</td></tr><tr><td>黄预警-营收</td><td>801-24</td><td>xiangliang</td><td>0.0161</td><td>全面预算管理报告的内容一般包括预算目标制定与分解、预算执行差异分析以及预算考评等。</td></tr><tr><td>黄预警-营收</td><td>803-18</td><td>xiangliang</td><td>0.0159</td><td>行政事业单位在预算管理中，应将决算和绩效结果作为编制以后年度预算的依据和重要参考变量，包括决算编制、决算分析、决算评价和绩效评价。4（一）行政事业单位决算作为预算执行结果的反映，应严格按照预算法和政府会计准则、制度等规定进行编制。（二）行政事业单位应加强决算分析工作，对各项收支的预决算差异和项目绩效目标与绩效结果的差异进行比较，分析差异产生的原因，并提出应对和解决措施。决算分析方法主要包括比较分析法、趋势分析法、比率分析法、结构分析法、因素分析法等。（三）行政事业单位应加强决算评价工作，设置决算评价指标，对预算执行结果进行绩效评价。决算评价方法主要采用横向比较法、纵向比较法、对标法等。</td></tr></tbody></table><h2>表二 · 成本类</h2><h3>计算结果</h3><table><colgroup><col style="width:22%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"></colgroup><thead><tr><th>科目</th><th>预算(元)</th><th>实际(元)</th><th>差额(元)</th><th>差异率</th><th>F/A</th><th>预警</th></tr></thead><tbody><tr><td>可控成本</td><td>97,500.00</td><td>100,815.00</td><td>3,315.00</td><td>3.40%</td><td>A</td><td>无</td></tr><tr><td>直接材料</td><td>67,500.00</td><td>59,737.50</td><td>-7,762.50</td><td>11.50%</td><td>F</td><td>红</td></tr><tr><td>直接人工</td><td>34,000.00</td><td>31,348.00</td><td>-2,652.00</td><td>7.80%</td><td>F</td><td>黄</td></tr><tr><td>制造费用</td><td>43,000.00</td><td>45,365.00</td><td>2,365.00</td><td>5.50%</td><td>A</td><td>黄</td></tr><tr><td>期间费用</td><td>19,500.00</td><td>18,915.00</td><td>-585.00</td><td>3.00%</td><td>F</td><td>无</td></tr><tr><td>办公费</td><td>10,200.00</td><td>12,699.00</td><td>2,499.00</td><td>24.50%</td><td>A</td><td>红</td></tr><tr><td>差旅费</td><td>8,600.00</td><td>8,832.20</td><td>232.20</td><td>2.70%</td><td>A</td><td>无</td></tr><tr><td>水电费</td><td>6,400.00</td><td>5,024.00</td><td>-1,376.00</td><td>21.50%</td><td>F</td><td>红</td></tr><tr><td>广告费</td><td>9,000.00</td><td>8,226.00</td><td>-774.00</td><td>8.60%</td><td>F</td><td>黄</td></tr><tr><td>采购成本</td><td>92,500.00</td><td>98,790.00</td><td>6,290.00</td><td>6.80%</td><td>A</td><td>黄</td></tr><tr><td>原材料采购</td><td>42,000.00</td><td>41,202.00</td><td>-798.00</td><td>1.90%</td><td>F</td><td>无</td></tr><tr><td>物流费用</td><td>10,500.00</td><td>11,970.00</td><td>1,470.00</td><td>14.00%</td><td>A</td><td>红</td></tr></tbody></table><h3>kb2 检索条文（向量库直出，全文）</h3><table><colgroup><col style="width:20%"><col style="width:13%"><col style="width:12%"><col style="width:9%"><col style="width:46%"></colgroup><thead><tr><th>来源提示词</th><th>条文定位</th><th>命中路</th><th>RRF 分</th><th>条文原文（全文）</th></tr></thead><tbody><tr><td>单双环判定</td><td>200-17</td><td>xiangliang</td><td>0.0164</td><td>预算审批包括预算内审批、超预算审批、预算外审批等。预算内审批事项，应简化流程，提高效率；超预算审批事项，应执行额外的审批流程；预算外审批事项，应严格控制，防范风险。- 4 -</td></tr><tr><td>单双环判定</td><td>200-16</td><td>xiangliang</td><td>0.0161</td><td>预算编制完成后，应按照相关法律法规及企业章程的规定报经企业预算管理决策机构审议批准，以正式文件形式下达执行。</td></tr><tr><td>单双环判定</td><td>200-24</td><td>xiangliang</td><td>0.0159</td><td>年度预算经批准后，原则上不作调整。企业应在制度中严格明确预算调整的条件、主体、权限和程序等事宜，当内外战略环境发生重大变化或突发重大事件等，导致预算编制的基本假设发生重大变化时，可进行预算调整。</td></tr><tr><td>核心问题模块</td><td>802-17</td><td>xiangliang</td><td>0.0164</td><td>成本控制主要按照既定的成本费用目标，对构成成本费用的诸要素进行规划、限制和调节，及时纠正偏差，控制成本费用超支，把实际耗费控制在成本费用计划范围内。成本控制的输入信息一般包括成本费用目标和政策、成本分析报告、预算控制等。企业应建立工作流审批授权机制，以实现费用控制过程，通过成本预警机制实现成本控制的处理过程，输出费用支付清单、成本控制报告等。</td></tr><tr><td>核心问题模块</td><td>302-19</td><td>xiangliang</td><td>0.0161</td><td>在标准成本法的实施过程中，各相关部门（或成本中心）应对其所管理的项目进行跟踪分析。生产部门一般应根据标准用量、标准工时等，实时跟踪和分析各项耗用差异,从操作人员、机器设备、原料质量、标准制定等方面寻找差异原因，采取应对措施，控制现场成本，并及时反馈给人力资源、技术、采购、财务等相关部门，共同实施事中控制。采购部门一般应根据标准价格，按照各项目采购批次，揭示和反- 15 -馈价格差异形成的原因，控制和降低总采购成本。</td></tr><tr><td>核心问题模块</td><td>300-15</td><td>xiangliang</td><td>0.0159</td><td>成本控制是成本管理者根据预定的目标，对成本发生和形成过程以及影响成本的各种因素条件施加主动的影响或干预，把- 3 -实际成本控制在预期目标内的成本管理活动。</td></tr><tr><td>红预警-办公费</td><td>200-7</td><td>xiangliang</td><td>0.0164</td><td>企业应用预算管理工具方法，一般按照预算编制、预算控制、预算调整、预算考核等程序进行。</td></tr><tr><td>红预警-办公费</td><td>200-18</td><td>xiangliang</td><td>0.0161</td><td>预算执行一般按照预算控制、预算调整等程序进行。</td></tr><tr><td>红预警-办公费</td><td>200-19</td><td>xiangliang</td><td>0.0159</td><td>预算控制，是指企业以预算为标准,通过预算分解、过程监督、差异分析等促使日常经营不偏离预算标准的管理活动。</td></tr><tr><td>红预警-水电费</td><td>302-21</td><td>xiangliang</td><td>0.0164</td><td>成本差异的计算与分析一般按成本或费用项目进行。</td></tr><tr><td>红预警-水电费</td><td>803-18</td><td>xiangliang</td><td>0.0161</td><td>行政事业单位在预算管理中，应将决算和绩效结果作为编制以后年度预算的依据和重要参考变量，包括决算编制、决算分析、决算评价和绩效评价。4（一）行政事业单位决算作为预算执行结果的反映，应严格按照预算法和政府会计准则、制度等规定进行编制。（二）行政事业单位应加强决算分析工作，对各项收支的预决算差异和项目绩效目标与绩效结果的差异进行比较，分析差异产生的原因，并提出应对和解决措施。决算分析方法主要包括比较分析法、趋势分析法、比率分析法、结构分析法、因素分析法等。（三）行政事业单位应加强决算评价工作，设置决算评价指标，对预算执行结果进行绩效评价。决算评价方法主要采用横向比较法、纵向比较法、对标法等。</td></tr><tr><td>红预警-水电费</td><td>801-24</td><td>xiangliang</td><td>0.0159</td><td>全面预算管理报告的内容一般包括预算目标制定与分解、预算执行差异分析以及预算考评等。</td></tr><tr><td>红预警-物流费用</td><td>802-17</td><td>xiangliang</td><td>0.0164</td><td>成本控制主要按照既定的成本费用目标，对构成成本费用的诸要素进行规划、限制和调节，及时纠正偏差，控制成本费用超支，把实际耗费控制在成本费用计划范围内。成本控制的输入信息一般包括成本费用目标和政策、成本分析报告、预算控制等。企业应建立工作流审批授权机制，以实现费用控制过程，通过成本预警机制实现成本控制的处理过程，输出费用支付清单、成本控制报告等。</td></tr><tr><td>红预警-物流费用</td><td>200-7</td><td>xiangliang</td><td>0.0161</td><td>企业应用预算管理工具方法，一般按照预算编制、预算控制、预算调整、预算考核等程序进行。</td></tr><tr><td>红预警-物流费用</td><td>200-18</td><td>xiangliang</td><td>0.0159</td><td>预算执行一般按照预算控制、预算调整等程序进行。</td></tr><tr><td>红预警-直接材料</td><td>302-22</td><td>xiangliang</td><td>0.0164</td><td>直接材料成本差异，是指直接材料实际成本与标准成本之间的差额，该项差异可分解为直接材料价格差异和直接材料数量差异。直接材料价格差异，是指在采购过程中，直接材料实际价格偏离标准价格所形成的差异；直接材料数量差异，是指在产品生产过程中，直接材料实际消耗量偏离标准消耗量所形成的差异。有关计算公式如下：直接材料成本差异＝实际成本－标准成本＝实际耗用量×实际单价－标准耗用量×标准单价直接材料成本差异＝直接材料价格差异＋直接材料数量差异直接材料价格差异＝实际耗用量×（实际单价－标准单价）直接材料数量差异＝（实际耗用量－标准耗用量）×标准单价</td></tr><tr><td>红预警-直接材料</td><td>302-13</td><td>xiangliang</td><td>0.0161</td><td>直接材料成本标准，是指直接用于产品生产的材料成本标准，包括标准用量和标准单价两方面。制定直接材料的标准用量，一般由生产部门负责，会同技术、财务、信息等部门，按照以下程序进行：（一）根据产品的图纸等技术文件进行产品研究，列出所需的各种材料以及可能的替代材料，并说明这些材料的种类、质量以及库存情况；（二）在对过去用料经验记录进行分析的基础上，采用过去用料的平均值、最高与最低值的平均数、最节省数量、实际测定数据或技术分析数据等，科学地制定标准用量。制定直接材料的标准单价，一般由采购部门负责，会同财务、生产、信息等部门，在考虑市场环境及其变化趋势、订货价格以及最佳采购批量等因素的基础上综合确定。直接材料标准成本的计算公式如下：直接材料标准成本＝单位产品的标准用量×材料的标准单价- 12 -材料按计划成本核算的企业，材料的标准单价可以采用材料计划单价。</td></tr><tr><td>红预警-直接材料</td><td>802-24</td><td>xiangliang</td><td>0.0159</td><td>预算分析和评价主要提供多种预算分析模型，实现在预算执行的数据基础上，对预算数和实际发生数进行多期间、多层次、多角度的预算分析，最终完成预算的业绩评价，为绩效考核提供数据基础。预算分析和评价的输入信息一般包括预算指标及预算执行情况，以及业绩评价的标准与考核办法等数据。企业应建立差异计算模型，- 8 -实现预算差异的计算，辅助实现差异成因分析过程，最终输出部门、期间、层级等多维度的预算差异分析报告等。</td></tr><tr><td>黄预警-广告费</td><td>302-21</td><td>xiangliang</td><td>0.0164</td><td>成本差异的计算与分析一般按成本或费用项目进行。</td></tr><tr><td>黄预警-广告费</td><td>801-24</td><td>xiangliang</td><td>0.0161</td><td>全面预算管理报告的内容一般包括预算目标制定与分解、预算执行差异分析以及预算考评等。</td></tr><tr><td>黄预警-广告费</td><td>801-30</td><td>xiangliang</td><td>0.0159</td><td>成本管理报告的内容一般包括成本预算、实际成本及其差异分析，成本差异形成的原因以及改进措施等。</td></tr><tr><td>黄预警-直接人工</td><td>302-23</td><td>xiangliang</td><td>0.0164</td><td>直接人工成本差异，是指直接人工实际成本与标准成本之间的差额，该差异可分解为工资率差异和人工效率差异。- 16 -工资率差异，是指实际工资率偏离标准工资率形成的差异，按实际工时计算确定；人工效率差异，是指实际工时偏离标准工时形成的差异，按标准工资率计算确定。有关计算公式如下：直接人工成本差异＝实际成本－标准成本＝实际工时×实际工资率－标准工时×标准工资率直接人工成本差异＝直接人工工资率差异+直接人工效率差异直接人工工资率差异＝实际工时×（实际工资率－标准工资率）直接人工效率差异＝（实际工时－标准工时）×标准工资率</td></tr><tr><td>黄预警-直接人工</td><td>802-24</td><td>xiangliang</td><td>0.0161</td><td>预算分析和评价主要提供多种预算分析模型，实现在预算执行的数据基础上，对预算数和实际发生数进行多期间、多层次、多角度的预算分析，最终完成预算的业绩评价，为绩效考核提供数据基础。预算分析和评价的输入信息一般包括预算指标及预算执行情况，以及业绩评价的标准与考核办法等数据。企业应建立差异计算模型，- 8 -实现预算差异的计算，辅助实现差异成因分析过程，最终输出部门、期间、层级等多维度的预算差异分析报告等。</td></tr><tr><td>黄预警-直接人工</td><td>302-21</td><td>xiangliang</td><td>0.0159</td><td>成本差异的计算与分析一般按成本或费用项目进行。</td></tr><tr><td>黄预警-采购成本</td><td>200-18</td><td>xiangliang</td><td>0.0164</td><td>预算执行一般按照预算控制、预算调整等程序进行。</td></tr><tr><td>黄预警-采购成本</td><td>802-17</td><td>xiangliang</td><td>0.0161</td><td>成本控制主要按照既定的成本费用目标，对构成成本费用的诸要素进行规划、限制和调节，及时纠正偏差，控制成本费用超支，把实际耗费控制在成本费用计划范围内。成本控制的输入信息一般包括成本费用目标和政策、成本分析报告、预算控制等。企业应建立工作流审批授权机制，以实现费用控制过程，通过成本预警机制实现成本控制的处理过程，输出费用支付清单、成本控制报告等。</td></tr><tr><td>黄预警-采购成本</td><td>200-7</td><td>xiangliang</td><td>0.0159</td><td>企业应用预算管理工具方法，一般按照预算编制、预算控制、预算调整、预算考核等程序进行。</td></tr><tr><td>黄预警-制造费用</td><td>802-17</td><td>xiangliang</td><td>0.0164</td><td>成本控制主要按照既定的成本费用目标，对构成成本费用的诸要素进行规划、限制和调节，及时纠正偏差，控制成本费用超支，把实际耗费控制在成本费用计划范围内。成本控制的输入信息一般包括成本费用目标和政策、成本分析报告、预算控制等。企业应建立工作流审批授权机制，以实现费用控制过程，通过成本预警机制实现成本控制的处理过程，输出费用支付清单、成本控制报告等。</td></tr><tr><td>黄预警-制造费用</td><td>200-7</td><td>xiangliang</td><td>0.0161</td><td>企业应用预算管理工具方法，一般按照预算编制、预算控制、预算调整、预算考核等程序进行。</td></tr><tr><td>黄预警-制造费用</td><td>200-18</td><td>xiangliang</td><td>0.0159</td><td>预算执行一般按照预算控制、预算调整等程序进行。</td></tr></tbody></table>
+</body>
+</html>

@@ -1,0 +1,422 @@
+{
+  "company": "青禾制造有限公司",
+  "simulation": true,
+  "records": {
+    "yusuan": [
+      {
+        "hanghao": 2,
+        "leibie": "预算基础",
+        "qijian": "2026-Q1",
+        "kemu": "营业收入",
+        "shuzhi": 120000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 3,
+        "leibie": "预算基础",
+        "qijian": "2026-Q2",
+        "kemu": "营业收入",
+        "shuzhi": 130000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 4,
+        "leibie": "预算基础",
+        "qijian": "2026-Q3",
+        "kemu": "营业收入",
+        "shuzhi": 140000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 5,
+        "leibie": "预算基础",
+        "qijian": "2026-Q4",
+        "kemu": "营业收入",
+        "shuzhi": 160000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 7,
+        "leibie": "预算基础",
+        "qijian": "2026-Q1",
+        "kemu": "直接材料",
+        "shuzhi": 38000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 8,
+        "leibie": "预算基础",
+        "qijian": "2026-Q2",
+        "kemu": "直接材料",
+        "shuzhi": 42000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 9,
+        "leibie": "预算基础",
+        "qijian": "2026-Q3",
+        "kemu": "直接材料",
+        "shuzhi": 46000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 10,
+        "leibie": "预算基础",
+        "qijian": "2026-Q4",
+        "kemu": "直接材料",
+        "shuzhi": 52000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 12,
+        "leibie": "预算基础",
+        "qijian": "2026-Q1",
+        "kemu": "直接人工",
+        "shuzhi": 21000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 13,
+        "leibie": "预算基础",
+        "qijian": "2026-Q2",
+        "kemu": "直接人工",
+        "shuzhi": 22000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 14,
+        "leibie": "预算基础",
+        "qijian": "2026-Q3",
+        "kemu": "直接人工",
+        "shuzhi": 23000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 15,
+        "leibie": "预算基础",
+        "qijian": "2026-Q4",
+        "kemu": "直接人工",
+        "shuzhi": 24000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 17,
+        "leibie": "预算基础",
+        "qijian": "2026-Q1",
+        "kemu": "销售费用",
+        "shuzhi": 9500000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 18,
+        "leibie": "预算基础",
+        "qijian": "2026-Q2",
+        "kemu": "销售费用",
+        "shuzhi": 10000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 19,
+        "leibie": "预算基础",
+        "qijian": "2026-Q3",
+        "kemu": "销售费用",
+        "shuzhi": 10500000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 20,
+        "leibie": "预算基础",
+        "qijian": "2026-Q4",
+        "kemu": "销售费用",
+        "shuzhi": 11500000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 22,
+        "leibie": "预算基础",
+        "qijian": "2026-Q1",
+        "kemu": "采购成本",
+        "shuzhi": 12000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 23,
+        "leibie": "预算基础",
+        "qijian": "2026-Q2",
+        "kemu": "采购成本",
+        "shuzhi": 13000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 24,
+        "leibie": "预算基础",
+        "qijian": "2026-Q3",
+        "kemu": "采购成本",
+        "shuzhi": 14000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      },
+      {
+        "hanghao": 25,
+        "leibie": "预算基础",
+        "qijian": "2026-Q4",
+        "kemu": "采购成本",
+        "shuzhi": 15000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "明确标注模拟数据"
+      }
+    ],
+    "shishi": [
+      {
+        "hanghao": 6,
+        "leibie": "实时经营",
+        "qijian": "2026-Q1",
+        "kemu": "营业收入",
+        "shuzhi": 102000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "模拟已结账数据"
+      },
+      {
+        "hanghao": 11,
+        "leibie": "实时经营",
+        "qijian": "2026-Q1",
+        "kemu": "直接材料",
+        "shuzhi": 52000000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "模拟已结账数据"
+      },
+      {
+        "hanghao": 16,
+        "leibie": "实时经营",
+        "qijian": "2026-Q1",
+        "kemu": "直接人工",
+        "shuzhi": 22680000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "模拟已结账数据"
+      },
+      {
+        "hanghao": 21,
+        "leibie": "实时经营",
+        "qijian": "2026-Q1",
+        "kemu": "销售费用",
+        "shuzhi": 11875000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "模拟已结账数据"
+      },
+      {
+        "hanghao": 26,
+        "leibie": "实时经营",
+        "qijian": "2026-Q1",
+        "kemu": "采购成本",
+        "shuzhi": 13560000,
+        "danwei": "元",
+        "laiyuan": "演示数据",
+        "gengxin_shijian": "2026-04-01",
+        "beizhu": "模拟已结账数据"
+      }
+    ],
+    "hangye": [],
+    "biangeng": [],
+    "jujue": [],
+    "ruku_shu": 25
+  },
+  "subjects": [
+    {
+      "kemu": "营业收入",
+      "module": "收入模块",
+      "direction": "收入类"
+    },
+    {
+      "kemu": "直接材料",
+      "module": "成本模块",
+      "direction": "成本类"
+    },
+    {
+      "kemu": "直接人工",
+      "module": "成本模块",
+      "direction": "成本类"
+    },
+    {
+      "kemu": "销售费用",
+      "module": "费用模块",
+      "direction": "成本类"
+    },
+    {
+      "kemu": "采购成本",
+      "module": "采购模块",
+      "direction": "成本类"
+    }
+  ],
+  "config": {
+    "cycle": "季度",
+    "period": "2026-Q1",
+    "growth": 100,
+    "industry": 50,
+    "industryThreshold": 50,
+    "industryCorrection": true,
+    "noise": 2500,
+    "significance": 2500,
+    "tiers": [
+      {
+        "ming_cheng": "黄",
+        "yu_fen": 1500,
+        "yan_se": "#ebbf69"
+      },
+      {
+        "ming_cheng": "红",
+        "yu_fen": 3000,
+        "yan_se": "#e68b8e"
+      }
+    ]
+  },
+  "bsc": {
+    "caijing_bps": 8500,
+    "kehu_bps": 9200,
+    "neibu_bps": 8800,
+    "xuexi_bps": 11000,
+    "quanzhong": [
+      40,
+      30,
+      20,
+      10
+    ]
+  },
+  "kpi": {
+    "shouru_shiji_fen": 102000000,
+    "shouru_yusuan_fen": 120000000,
+    "kekong_chengben_shiji_fen": 74680000,
+    "kekong_chengben_yusuan_fen": 59000000,
+    "feiyong_shiji_fen": 11875000,
+    "feiyong_yusuan_fen": 9500000,
+    "maoli_fen": 27320000,
+    "jingshui_fen": 8500000,
+    "pbit_fen": 11445000,
+    "ziben_zhanyong_fen": 380000000,
+    "liudong_zichan_qichu_fen": 180000000,
+    "liudong_zichan_qimo_fen": 210000000,
+    "liudong_fuzhai_qichu_fen": 70000000,
+    "liudong_fuzhai_qimo_fen": 78000000,
+    "caigou_benqi_fen": 13560000,
+    "caigou_shangqi_fen": 12000000,
+    "shiji_chanchu": 8800,
+    "qianzai_channeng": 10000,
+    "dingdan_zongshu": 500,
+    "lvyue_dingdan_shu": 470,
+    "jiaofu_zhouqi_tian_shu": 7,
+    "manyi_keshu": 460,
+    "shoufang_keshu": 500,
+    "jihua_yewu_liang": 10000,
+    "wancheng_yewu_liang": 8800,
+    "yichang_shijian_shu": 5
+  },
+  "splits": [
+    {
+      "kemu": "直接材料",
+      "period": "2026-Q1",
+      "values": {
+        "biaozhun_danjia_fen": 3800,
+        "biaozhun_yongliang": 1,
+        "xiuding_danjia_fen": 4500,
+        "xiuding_yongliang": 1,
+        "shiji_chanliang": 10000,
+        "shiji_yongliang": 11000,
+        "shiji_chengben_fen": 52000000
+      }
+    }
+  ],
+  "events": [
+    {
+      "kemu": "直接材料",
+      "period": "2026-Q1",
+      "reason": "模拟：供应商更换导致采购单价上升，材料耗用同步增加。",
+      "structural": true
+    }
+  ],
+  "traces": [
+    {
+      "kpi_mingcheng": "毛利率",
+      "bianhua_qian": 3000,
+      "bianhua_hou": 2678,
+      "yuan_yusuan": 3200
+    },
+    {
+      "kpi_mingcheng": "交付周期",
+      "bianhua_qian": 500,
+      "bianhua_hou": 700,
+      "yuan_yusuan": 500
+    },
+    {
+      "kpi_mingcheng": "客户满意度",
+      "bianhua_qian": 9200,
+      "bianhua_hou": 9500,
+      "yuan_yusuan": 9000
+    }
+  ],
+  "baselines": []
+}

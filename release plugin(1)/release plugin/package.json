@@ -1,0 +1,18 @@
+{
+  "name": "@finagent/fin-agent-dsh-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "FinAgent 智能预算差异分析与风险预警系统 — dsh 树外插件[TypeScript 转写自 Python 版行为准绳]",
+  "main": "./src/index.ts",
+  "dsh": {
+    "bundle": true
+  },
+  "scripts": {
+    "test": "node --test",
+    "mkjunction": "node scripts/mkjunction.cjs"
+  },
+  "engines": {
+    "node": ">=22.19"
+  }
+}
