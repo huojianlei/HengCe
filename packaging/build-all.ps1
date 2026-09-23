@@ -12,9 +12,14 @@ New-Item -ItemType Directory -Force $packageRoot,(Join-Path $packageRoot 'runtim
 # Copy only audited core files needed by the desktop adapter; no mutable database generation.
 Copy-Item -LiteralPath (Join-Path $projectRoot 'release plugin(1)\release plugin\src') -Destination (Join-Path $packageRoot 'release plugin(1)\release plugin') -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'release plugin(1)\release plugin\package.json') -Destination (Join-Path $packageRoot 'release plugin(1)\release plugin') -Force
-foreach($name in 'server.mjs','engine.mjs','bridge.py','package.json'){Copy-Item -LiteralPath (Join-Path $projectRoot "desktop\$name") -Destination (Join-Path $packageRoot 'desktop') -Force}
+foreach($name in 'server.mjs','engine.mjs','bridge.py','ai-boundary.mjs','ai_worker.py','package.json'){Copy-Item -LiteralPath (Join-Path $projectRoot "desktop\$name") -Destination (Join-Path $packageRoot 'desktop') -Force}
 & node (Join-Path $PSScriptRoot 'prepare-desktop.mjs') $packageRoot $Flavor
 if($LASTEXITCODE -ne 0){throw '桌面资源隔离构建失败'}
+if($Flavor -eq 'Experimental'){
+ foreach($name in '演示底稿-预算基础.xlsx','演示底稿-实时经营.xlsx'){
+  Copy-Item -LiteralPath (Join-Path $projectRoot "desktop\experimental\$name") -Destination (Join-Path $packageRoot 'desktop\experimental') -Force
+ }
+}
 foreach($name in 'query_kb2.py','build_kb2.py','guanli_ku.sqlite'){Copy-Item -LiteralPath (Join-Path $sharedRoot "kb2\$name") -Destination (Join-Path $packageRoot 'kb2') -Force}
 Copy-Item -LiteralPath (Join-Path $sharedRoot 'kb2\models') -Destination (Join-Path $packageRoot 'kb2') -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'fenxi\analysis_generator.py') -Destination (Join-Path $packageRoot 'fenxi') -Force
@@ -42,4 +47,8 @@ Push-Location -LiteralPath $packageRoot
 try { & (Join-Path $packageRoot 'runtime\node.exe') --input-type=module -e "await import('./desktop/engine.mjs'); console.log('Packaged engine imports OK');" 2>&1 | Write-Output }
 finally { Pop-Location }
 if($LASTEXITCODE -ne 0){throw '打包后计算验证失败；请从包目录执行构建验证'}
+if($Flavor -eq 'Production'){
+ & (Join-Path $packageRoot 'runtime\node.exe') (Join-Path $PSScriptRoot 'assert-production.mjs') $packageRoot
+ if($LASTEXITCODE -ne 0){throw '正式包隔离验证失败；本地生成模型组件禁止交付'}
+}
 Write-Output "完成：$packageRoot\FinAgent.exe"

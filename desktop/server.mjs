@@ -8,8 +8,8 @@ import {spawn} from 'node:child_process';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {createInterface} from 'node:readline';
 import {parseText,subjects,analyze,integer,recount} from './engine.mjs';
+import {prepareAiRequest} from './ai-boundary.mjs';
 import {jiequ_wenben} from '../release plugin(1)/release plugin/src/file-extract.ts';
-import {gouzao_tishi,shuzi_yuansu_jiaoyan} from '../release plugin(1)/release plugin/src/llm-clean.ts';
 
 const here=path.dirname(fileURLToPath(import.meta.url)), root=path.dirname(here);
 const token=randomBytes(24).toString('hex');
@@ -19,6 +19,7 @@ if(!/^D:[\\/]/i.test(path.resolve(dataDir)))throw new Error('数据与缓存目�
 await fs.mkdir(dataDir,{recursive:true});
 let settings={outputDir:path.join(dataDir,'输出报告')};
 try {settings={...settings,...JSON.parse(await fs.readFile(path.join(dataDir,'settings.json'),'utf8'))};} catch {}
+settings={outputDir:/^D:[\\/]/i.test(path.resolve(settings.outputDir || ''))?path.resolve(settings.outputDir):path.join(dataDir,'输出报告')};
 const state={input:null,result:null,runId:null,revisions:[]};
 try {Object.assign(state,JSON.parse(await fs.readFile(path.join(dataDir,'last-session.json'),'utf8')));} catch {}
 let busy=false;
@@ -46,11 +47,12 @@ function python(req, onEvent, signal) {
   });
 }
 async function streamChat(data,res){
+  if(data.dataAccess!==true){const permission=prepareAiRequest(null,{dataAccess:false});res.writeHead(200,{'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({type:'done',ok:true,...permission.response})+'\n');return;}
   if(!state.result)throw new Error('请先运行预算分析');
   if(data.runId && data.runId!==state.runId)throw new Error('报告已更新，请刷新后操作');
   const question=String(data.question??'').trim().slice(0,4000);
   if(!question)throw new Error('请填写问题');
-  const request={op:'chat',stream:true,question,data:state.result,...modelSettings(data)};
+  const request={...prepareAiRequest(state.result,{dataAccess:data.dataAccess,op:'chat',question}).request,stream:true,...modelSettings(data)};
   const controller=new AbortController();
   activeChat={id:data.requestId,controller};
   const closed=()=>controller.abort();res.on('close',closed);
@@ -69,7 +71,7 @@ async function body(req) {
 }
 function modelSettings(data){
   const endpoint=new URL(data.endpoint || 'https://api.deepseek.com');
-  if(endpoint.protocol!=='https:' && !(['127.0.0.1','localhost'].includes(endpoint.hostname)&&endpoint.protocol==='http:'))throw new Error('模型接口须使用 HTTPS（本机服务可使用 HTTP）');
+  if(endpoint.protocol!=='https:' || ['127.0.0.1','localhost','[::1]'].includes(endpoint.hostname))throw new Error('本版本仅接入 HTTPS 云端模型接口，本地模型接入暂不提供');
   return {apiKey:data.apiKey || '',endpoint:endpoint.href,model:data.model || 'deepseek-chat'};
 }
 async function saveResult(){
@@ -80,6 +82,27 @@ async function saveResult(){
   return file;
 }
 async function route(url,data) {
+  if(url==='/api/clear'){
+    Object.assign(state,{input:null,result:null,runId:null,revisions:[]});
+    await fs.writeFile(path.join(dataDir,'last-session.json'),JSON.stringify(state),'utf8');
+    return {cleared:true};
+  }
+  if(url==='/api/intake'){
+    const provided=Array.isArray(data.categories)&&data.categories.includes('经营变更');
+    const changeStatus=provided?'provided':data.changeStatus==='none'?'none':data.changeStatus==='pending'?'pending':'unknown';
+    const questions=[];
+    if(changeStatus==='unknown')questions.push({id:'operating-change',question:'本期是否发生过经营变更？答“无”可跳过；答“有”请先登记事件台账与科目影响，再导入经营变更输入模板。'});
+    let source='本机输入核验';
+    if(data.firstPass===true){
+      let question='是否有经营变更台账未覆盖的宏观环境变化或其他特殊事项需要说明？没有可跳过；叙述不能代替台账与审批。';
+      if(data.apiKey){try{const generated=await python({op:'intake',...modelSettings(data)});question=generated.question;source=generated.status;}catch{source='模型追问不可用，采用本机必要问题';}}
+      questions.push({id:'narrative-context',question});
+    }
+    return {changeStatus,requiresChangeConfirmation:changeStatus==='unknown'||changeStatus==='pending',questions,source};
+  }
+  if(['/api/chat','/api/enrich'].includes(url)&&data.dataAccess!==true){
+    return {ok:true,...prepareAiRequest(null,{dataAccess:false}).response};
+  }
   if(url==='/api/settings'){
     if(data.outputDir){if(!path.isAbsolute(data.outputDir)||!/^D:[\\/]/i.test(path.resolve(data.outputDir)))throw new Error('输出目录必须是 D 盘绝对路径');settings.outputDir=path.resolve(data.outputDir);await fs.mkdir(settings.outputDir,{recursive:true});await fs.writeFile(path.join(dataDir,'settings.json'),JSON.stringify(settings));}
     return settings;
@@ -108,13 +131,10 @@ async function route(url,data) {
     return {records,subjects:subjects(records),text};
   }
   if(url==='/api/normalize'){
-    if(process.env.FINAGENT_DEBUG_CSV!=='1')throw new Error('唯一模板入口不提供格式适配');
-    const r=await python({op:'normalize',...modelSettings(data),prompt:gouzao_tishi(data.text)});
-    const text=r.text.replace(/^```(?:csv)?\s*|\s*```$/g,'');
-    const errors=shuzi_yuansu_jiaoyan(data.text,text);if(errors.length)throw new Error('AI 提取未通过数字原文核验：'+errors.join('；'));
-    const records=parseText(text);return {records,subjects:subjects(records),text};
+    throw new Error('工作簿仅在本机解析，不提供向模型上传原始数据的格式适配');
   }
   if(url==='/api/demo-excel'){
+    if(distribution.dataFolder!=='FinAgent-Experimental')throw new Error('固定种子演示仅在演示版提供');
     const r=await python({op:'generate_excel',seed:data.seed,entity:data.entity,scenario:data.scenario,grain:data.grain});
     const result=analyze(r.input); // 用真实引擎预跑；失败不得导出。
     await fs.mkdir(settings.outputDir,{recursive:true});
@@ -136,8 +156,8 @@ async function route(url,data) {
     const result=analyze(data); // Validate completely before replacing the current report.
     // Verification probe (demo generator self-check): compute only, keep state and output files untouched.
     if(data.probe===true)return {result};
-    const {company,simulation,records,subjects,config,bsc,kpi,splits,events,traces,baselines}=data;
-    state.input=structuredClone({company,simulation,records,subjects,config,bsc,kpi,splits,events,traces,baselines});state.result=result;state.revisions=[];
+    const {company,simulation,records,subjects,config,bsc,kpi,splits,events,traces,baselines,metadata,changeStatus}=data;
+    state.input=structuredClone({company,simulation,records,subjects,config,bsc,kpi,splits,events,traces,baselines,metadata,changeStatus});state.result=result;state.revisions=[];
     state.runId=`预算分析-${new Date().toISOString().replace(/[:.]/g,'-')}-${randomUUID().slice(0,8)}`;
     state.result.id=state.runId;await saveResult();return {result:state.result,outputDir:settings.outputDir};
   }
@@ -156,10 +176,10 @@ async function route(url,data) {
   if(!state.result)throw new Error('请先运行预算分析');
   if(data.runId && data.runId!==state.runId)throw new Error('报告已更新，请刷新后操作');
   if(url==='/api/enrich'){
-    const extra=await python({op:'enrich',data:state.result,...modelSettings(data)});
+    const extra=await python({...prepareAiRequest(state.result,{dataAccess:data.dataAccess,op:'enrich'}).request,...modelSettings(data)});
     Object.assign(state.result,{analysis:extra.analysis,references:extra.references,retrievalFailures:extra.failures});await saveResult();return {result:state.result};
   }
-  if(url==='/api/chat')return python({op:'chat',question:String(data.question).slice(0,4000),data:state.result,...modelSettings(data)});
+  if(url==='/api/chat')return python({...prepareAiRequest(state.result,{dataAccess:data.dataAccess,op:'chat',question:String(data.question??'').slice(0,4000)}).request,...modelSettings(data)});
   if(url==='/api/action'){
     if(!['待整改','进行中','已完成'].includes(data.status))throw new Error('整改状态无效');
     const action=state.result.correction.qingdan.find(x=>x.id===data.id);if(!action)throw new Error('整改项不存在');

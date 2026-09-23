@@ -19,10 +19,17 @@ test('old file formats and free text are rejected',async()=>{
 });
 test('budget and actual use same 12-sheet shape but map separately',async()=>{
  for(const [kind,key,other,count] of [['预算基础','yusuan','shishi',1140],['实时经营','shishi','yusuan',570]]){
-  const bytes=await fs.readFile(path.join(root,`desktop/templates/${kind}输入模板.xlsx`));
+  const bytes=await fs.readFile(path.join(root,`algo/fixtures/月度主体甲-${kind}.xlsx`));
   const r=await api('import',{name:`${kind}.xlsx`,base64:bytes.toString('base64')});
   assert.equal(r.status,200,JSON.stringify(r.body));assert.equal(r.body.category,kind);
   assert.equal(r.body.records[key].length,count);assert.equal(r.body.records[other].length,0);assert.equal(r.body.checks,226);
+ }
+});
+test('download templates must be filled before business import',async()=>{
+ for(const kind of ['预算基础','实时经营','行业对标','经营变更']){
+  const bytes=await fs.readFile(path.join(root,`desktop/templates/${kind}输入模板.xlsx`));
+  const r=await api('import',{name:`${kind}.xlsx`,base64:bytes.toString('base64')});
+  assert.equal(r.status,400,kind+' empty template must not imply zero business activity');
  }
 });
 test('all four seeded workbooks reimport and complete one analysis',async()=>{

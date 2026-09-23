@@ -53,7 +53,9 @@ export function analyze(input, revisions = []) {
   integer(config.industryThreshold, '行业修正门限', 0, 10000);
   integer(config.noise, '噪声门限', 0, 1000000); integer(config.significance, '显著性门限', 0, 1000000);
   tiers(config.tiers);
-  const bySubject = Object.fromEntries((input.subjects ?? []).map(x => [x.kemu, x]));
+  // T-21: labor belongs to cost, including labor lines nested in expense sheets.
+  const mappedSubjects = (input.subjects ?? []).map(x => /人工|人力|薪酬|工资|社保|社会保险|公积金/.test(x.kemu) ? {...x,module:'成本模块',direction:'成本类'} : {...x});
+  const bySubject = Object.fromEntries(mappedSubjects.map(x => [x.kemu, x]));
   const overrides = Object.fromEntries((input.subjects ?? []).filter(x => x.tiers?.length).map(x => [x.kemu, tiers(x.tiers)]));
   const budget = records.yusuan.filter(x => x.danwei === '元');
   const actual = records.shishi.filter(x => x.danwei === '元' && x.qijian <= config.period);
@@ -69,6 +71,11 @@ export function analyze(input, revisions = []) {
   }
   if (!actual.length) throw new Error('当前分析期间内没有实际经营数据');
   const warnings = [];
+  const changeStatus=input.changeStatus ?? (input.events?.length ? 'provided' : 'unknown');
+  if(!['unknown','none','provided','pending'].includes(changeStatus))throw new Error('经营变更确认状态无效');
+  if(changeStatus==='none' && input.events?.length)throw new Error('已登记经营变更，不能同时声明本期无变更');
+  const changeUnconfirmed=['unknown','pending'].includes(changeStatus);
+  if(changeUnconfirmed)warnings.push('经营变更尚未确认；缺失文件不代表本期无变更，环路判定暂待复核');
   const rolling = []; const comparison = [];
   for (const name of [...new Set(budget.map(x => x.kemu))]) {
     const mapping = bySubject[name];
@@ -111,6 +118,15 @@ export function analyze(input, revisions = []) {
   }
   if (actual.some(x => !budget.some(y => x.kemu === y.kemu && x.qijian === y.qijian))) throw new Error('实际数据中存在无对应预算的科目或期间');
   const variance = jisuan_chayi(comparison, config.tiers, overrides);
+  for(const row of variance.xiang)row.module=bySubject[row.kemu].module;
+  const moduleSummary=['收入模块','成本模块','费用模块','采购模块'].map(module=>{
+    const rows=variance.xiang.filter(x=>x.module===module);
+    const netDeltaFen=rows.reduce((sum,x)=>sum+x.chae_fen,0);
+    return {module,netDeltaFen,direction:netDeltaFen===0?'持平':((module==='收入模块')===(netDeltaFen>0)?'有利':'不利'),shareBps:0,
+      budgetFen:rows.reduce((sum,x)=>sum+x.jizhun_fen,0),actualFen:rows.reduce((sum,x)=>sum+x.shiji_fen,0),count:rows.length};
+  });
+  const totalDelta=moduleSummary.reduce((sum,x)=>sum+Math.abs(x.netDeltaFen),0);
+  for(const item of moduleSummary)item.shareBps=totalDelta?Number((BigInt(Math.abs(item.netDeltaFen))*10000n+BigInt(totalDelta)/2n)/BigInt(totalDelta)):0;
   for(const group of ['splits','events','baselines']){
     const seen=new Set();
     for(const item of input[group]??[]){
@@ -129,7 +145,12 @@ export function analyze(input, revisions = []) {
       guihua_zong_fen:split?.result.guihua_zong_fen ?? null,zhixing_zong_fen:split?.result.zhixing_zong_fen ?? null,
       yuandan_cbf_fen:split ? integer(split.input.shiji_chanliang*split.input.biaozhun_yongliang*split.input.biaozhun_danjia_fen,'原标准成本') : null};
     const result = panduan_huanlu(params, config.noise, config.significance);
-    return {kemu:row.kemu,period:row.qijian,input:params,...result};
+    if(changeUnconfirmed){
+      params.jie_gou_biangeng=null;
+      Object.assign(result,{qingxing:5,panduan:'复核提示',jiuzheng:'先确认本期经营变更；如有，请登记事件台账与科目影响后重新导入',shenpi:false,beizhu:'经营变更未确认，不作无结构性变更假设'});
+      result.yiju={...result.yiju,'结构变更登记':null};
+    }
+    return {kemu:row.kemu,period:row.qijian,input:params,...result,changeStatus,requiresChangeConfirmation:changeUnconfirmed};
   });
   // Legacy block validation knows four alert names; map the display-only field at this boundary.
   const blocks = chai_jimu(variance.xiang.map(x=>cong_chayi_xiang({...x,yujing:['无','—','黄','红'].includes(x.yujing)?x.yujing:'黄'})), name => bySubject[name]?.module ?? null);
@@ -153,8 +174,8 @@ export function analyze(input, revisions = []) {
   recount(correction);
   const dashboard = shengcheng_kanban({chayi:variance,jimu:blocks,bsc,kpi,suyuan:trace,zhenggai:correction});
   const factors = shengcheng_xishu({chayi:variance,jimu:blocks,bsc,zhenggai:correction,panduan:decisions.find(x=>x.shenpi) ?? decisions[0]});
-  return {schemaVersion:'1.0',meta:{company:input.company || '企业预算',period:config.period,cycle:config.cycle,simulation:input.simulation===true,generatedAt:new Date().toISOString(),moneyUnit:'分',rateUnit:'基点'},config,
-    records,subjects:input.subjects,rolling,variance,splits,decisions,blocks,bsc,kpi,trace,correction,dashboard,factors,warnings,revisions};
+  return {schemaVersion:'1.0',meta:{company:input.company || '企业预算',entityName:input.metadata?.['主体名称'] || input.company || '企业预算',scenarioName:input.metadata?.['情景名称'] || '',entityCode:input.metadata?.['主体编码'] || '',scenarioCode:input.metadata?.['情景编码'] || '',changeStatus,period:config.period,cycle:config.cycle,simulation:input.simulation===true,generatedAt:new Date().toISOString(),moneyUnit:'分',rateUnit:'基点'},config,
+    records,subjects:mappedSubjects,rolling,variance,moduleSummary,splits,decisions,blocks,bsc,kpi,trace,correction,dashboard,factors,warnings,revisions};
 }
 export function recount(c) {
   c.zong_shu=c.qingdan.length;

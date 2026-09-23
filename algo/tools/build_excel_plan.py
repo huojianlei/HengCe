@@ -103,7 +103,7 @@ def make_plan(source,seed=20260923,entity='主体甲',scenario='基础情景',gr
             c=col(m+3)
             if m:
                 formula(s,f'{c}{31+off}',f'$C${31+off}');formula(s,f'{c}{32+off}',f'$C${32+off}')
-            formula(s,f'{c}{33+off}',f'ROUND({c}{31+off}/{c}{32+off},2)')
+            formula(s,f'{c}{33+off}',f'ROUND({c}{31+off}/MAX({c}{32+off},1),2)')
             formula(s,f'{c}{34+off}',f'SUM($C{33+off}:{c}{33+off})')
             formula(s,f'{c}{35+off}',f'{c}{31+off}-{c}{34+off}')
         s='税金及附加'

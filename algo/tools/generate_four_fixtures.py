@@ -15,7 +15,7 @@ HASHES=json.loads((TEMPLATE/'数值黑名单哈希.json').read_text(encoding='ut
 def build(seed,entity,scenario,grain,prefix):
     files=[];imports=[]
     for category in ('预算基础','实时经营'):
-        raw,item=generate((TEMPLATE/f'{category}输入模板.xlsx').read_bytes(),seed,entity,scenario,grain,HASHES)
+        raw,item=generate((ROOT/f'desktop/experimental/演示底稿-{category}.xlsx').read_bytes(),seed,entity,scenario,grain,HASHES)
         files.append((category,raw));imports.append(item)
     m=imports[0]['metadata'];args=(seed,m['主体编码'],entity,m['情景编码'],scenario,int(m['年度']),grain,HASHES)
     for category,function in (('行业对标',industry_demo),('经营变更',change_demo)):

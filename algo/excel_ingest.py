@@ -45,7 +45,7 @@ def import_twelve_sheet(data,name='标准模板.xlsx'):
     if contract_path.exists():
         contract=json.loads(contract_path.read_text(encoding='utf-8'))
         for sheet,schema in contract.items():
-            if set(book.cells[sheet])!=set(schema['cells']):raise ExcelError(f'{sheet}单元格结构不符合标准模板')
+            if not set(book.cells[sheet])<=set(schema['cells']):raise ExcelError(f'{sheet}出现标准模板以外的单元格')
             if sorted(book.merges[sheet])!=schema['merges']:raise ExcelError(f'{sheet}合并单元格结构被修改')
             for ref,expected in schema['labels'].items():
                 if book.value(sheet,ref)!=expected:raise ExcelError(f'固定表头或科目被修改：{sheet}!{ref}')
@@ -68,15 +68,22 @@ def import_twelve_sheet(data,name='标准模板.xlsx'):
     for s in SHEETS[1:]:
         for i,key in enumerate(META,1):
             if book.value(s,f'AX{i}')!=key or book.value(s,f'AY{i}')!=meta[key]:raise ExcelError(f'{s}元字段与利润表不一致')
+    for s,row in [(x,3) for x in SHEETS[6:9]]+[(x,30) for x in SHEETS[3:5]]+[(x,60) for x in SHEETS[:3]]:
+        for month in range(1,13):
+            ref=f'{col(month+2)}{row}';header=book.value(s,ref)
+            if header not in (f'{month}月',f'{year}-{month:02}'):
+                raise ExcelError(f'{s}!{ref} 月份表头被修改')
     # 核验账户注册与每一行的七个元字段，禁止缺失、重码或跨版本混用。
     for off in (0,):
         for a in ACCOUNTS:
             s=a['sheet'];r=a['row']+off
-            expected=(a['code'],meta['数据版本号'],meta['口径标记'],meta['生效周期'],closed)
-            for c,x in zip('PQRST',expected):
-                if book.value(s,f'{c}{r}')!=x:raise ExcelError(f'科目编码或元字段不符：{s}!{c}{r}')
+            if book.value(s,f'P{r}')!=a['code']:raise ExcelError(f'科目唯一编码不符：{s}!P{r}')
+            for c,x in zip('QRST',(meta['数据版本号'],meta['口径标记'],meta['生效周期'],closed)):
+                value=book.value(s,f'{c}{r}')
+                if value is not None and value!=x:raise ExcelError(f'行元字段与批次冲突：{s}!{c}{r}')
             for c in 'UV':
-                if not isinstance(book.value(s,f'{c}{r}'),str):raise ExcelError('结构变更标签和受影响科目不能为空，未发生时填“无”')
+                if book.value(s,f'{c}{r}') is not None and not isinstance(book.value(s,f'{c}{r}'),str):
+                    raise ExcelError('结构变更标签和受影响科目须为文本')
             for m in range(12):
                 x=book.number(s,f'{col(m+3)}{r}')
                 if x<0 or x>Decimal('9000000000'):raise ExcelError(f'科目金额超出允许范围：{a["code"]}')
@@ -92,8 +99,8 @@ def import_twelve_sheet(data,name='标准模板.xlsx'):
             amount=sum((book.number(a['sheet'],f'{col(m+3)}{a["row"]}') for m in months),Decimal(0))
             note={'主体编码':meta['主体编码'],'情景编码':meta['情景编码'],'科目唯一编码':a['code'],
                   '数据版本号':meta['数据版本号'],'口径标记':meta['口径标记'],'生效周期':meta['生效周期'],
-                  '已结账标记':category=='实时经营','结构性变更标签':book.value(a['sheet'],f'U{a["row"]}'),
-                  '受影响科目':book.value(a['sheet'],f'V{a["row"]}'),'源工作表':a['sheet'],'源行':a['row'],
+                  '已结账标记':category=='实时经营','结构性变更标签':book.value(a['sheet'],f'U{a["row"]}') or '无',
+                  '受影响科目':book.value(a['sheet'],f'V{a["row"]}') or '无','源工作表':a['sheet'],'源行':a['row'],
                   '数据状态':meta['数据状态']}
             rows.append([category,period,a['name'],f'{amount:.2f}','元','确定性模拟模板' if meta['数据状态']=='占位' else '标准Excel模板',closed+'-01',json.dumps(note,ensure_ascii=False)])
             row_meta.append(note)

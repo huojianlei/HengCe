@@ -1,5 +1,5 @@
 """四类固定 Excel 输入的行为验收，不改原有 247 项用例。"""
-import io,json,sys,unittest,zipfile
+import io,json,sys,unittest,zipfile,re
 from pathlib import Path
 from decimal import Decimal
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
@@ -12,8 +12,24 @@ TEMPLATES=ROOT/'desktop/templates'
 FIXTURES=ROOT/'algo/fixtures'
 HASHES=json.loads((TEMPLATES/'数值黑名单哈希.json').read_text())
 def template(kind):return (TEMPLATES/f'{kind}输入模板.xlsx').read_bytes()
+def model(kind):return (ROOT/f'desktop/experimental/演示底稿-{kind}.xlsx').read_bytes()
 def fixture(kind,prefix='月度主体甲'):return (FIXTURES/f'{prefix}-{kind}.xlsx').read_bytes()
 class FourInputs(unittest.TestCase):
+ def test_downloads_are_empty_black_and_white(self):
+  for kind in ('预算基础','实时经营','行业对标','经营变更'):
+   raw=template(kind);book=Book(raw)
+   self.assertFalse(any(t=='number' for cells in book.cells.values() for t,v in cells.values()),kind)
+   with zipfile.ZipFile(io.BytesIO(raw)) as z:
+    styles=z.read('xl/styles.xml').decode('utf8')
+    colors=set(re.findall(r'rgb="([0-9A-Fa-f]{8})"',styles))
+    self.assertLessEqual(colors,{'FF000000','FFFFFFFF'},kind)
+    if kind in ('预算基础','实时经营'):
+     for name in z.namelist():
+      if name.startswith('xl/worksheets/') and name.endswith('.xml'):
+       self.assertNotIn('主体甲',z.read(name).decode('utf8'))
+ def test_unfilled_twelve_sheet_template_cannot_analyze(self):
+  for kind in ('预算基础','实时经营'):
+   with self.assertRaises(ExcelError):import_excel(template(kind))
  def test_budget_and_actual_share_exact_layout(self):
   a,b=Book(template('预算基础')),Book(template('实时经营'))
   self.assertEqual(tuple(a.cells),tuple(b.cells))
@@ -23,16 +39,16 @@ class FourInputs(unittest.TestCase):
    self.assertEqual({r:v for r,(k,v) in a.cells[sheet].items() if k=='formula'},
                     {r:v for r,(k,v) in b.cells[sheet].items() if k=='formula'})
  def test_each_twelve_sheet_book_emits_only_its_own_category(self):
-  a=import_excel(template('预算基础'));b=import_excel(template('实时经营'))
+  a=import_excel(fixture('预算基础'));b=import_excel(fixture('实时经营'))
   self.assertEqual((len(a['records']['yusuan']),len(a['records']['shishi'])),(1140,0))
   self.assertEqual((len(b['records']['yusuan']),len(b['records']['shishi'])),(0,570))
   self.assertEqual(a['checks'],226);self.assertEqual(b['checks'],226)
  def test_seeded_budget_and_actual_differ_and_reproduce(self):
-  a,_=generate(template('预算基础'),73,blacklist_hashes=HASHES)
-  b,_=generate(template('实时经营'),73,blacklist_hashes=HASHES)
+  a,_=generate(model('预算基础'),73,blacklist_hashes=HASHES)
+  b,_=generate(model('实时经营'),73,blacklist_hashes=HASHES)
   self.assertNotEqual(a,b)
-  self.assertEqual(a,generate(template('预算基础'),73,blacklist_hashes=HASHES)[0])
-  self.assertEqual(b,generate(template('实时经营'),73,blacklist_hashes=HASHES)[0])
+  self.assertEqual(a,generate(model('预算基础'),73,blacklist_hashes=HASHES)[0])
+  self.assertEqual(b,generate(model('实时经营'),73,blacklist_hashes=HASHES)[0])
  def test_four_files_merge_without_dropping_category(self):
   items=[import_excel(fixture(k)) for k in ('预算基础','实时经营','行业对标','经营变更')]
   result=combine_imports(items)
@@ -43,22 +59,22 @@ class FourInputs(unittest.TestCase):
   m=import_excel(fixture('预算基础'))['records']['yusuan']
   q=import_excel(fixture('预算基础','季度主体乙'))['records']['yusuan']
   # Budget values differ by entity: compare the same subject with quarter aggregation in one book.
-  monthly=import_excel(generate(template('预算基础'),73,'主体乙','扩展情景','月度',HASHES)[0])['records']['yusuan']
-  quarterly=import_excel(generate(template('预算基础'),73,'主体乙','扩展情景','季度',HASHES)[0])['records']['yusuan']
+  monthly=import_excel(generate(model('预算基础'),73,'主体乙','扩展情景','月度',HASHES)[0])['records']['yusuan']
+  quarterly=import_excel(generate(model('预算基础'),73,'主体乙','扩展情景','季度',HASHES)[0])['records']['yusuan']
   self.assertEqual(quarterly[0]['shuzhi'],sum(x['shuzhi'] for x in monthly[:3]))
  def test_three_entities_are_distinct_groups(self):
   keys=set()
   for e in ('主体甲','主体乙','主体丙'):
-   _,r=generate(template('预算基础'),47,e,'基础情景',blacklist_hashes=HASHES);keys.add(r['groupKey'])
+   _,r=generate(model('预算基础'),47,e,'基础情景',blacklist_hashes=HASHES);keys.add(r['groupKey'])
   self.assertEqual(len(keys),3)
  def test_missing_real_actual_is_not_silently_zero(self):
-  with self.assertRaisesRegex(ExcelError,'同时提供'):combine_imports([import_excel(template('预算基础'))])
+  with self.assertRaisesRegex(ExcelError,'同时提供'):combine_imports([import_excel(fixture('预算基础'))])
  def test_cannot_mix_entity_or_basis(self):
   a=import_excel(fixture('预算基础'));b=import_excel(fixture('实时经营','季度主体乙'))
   with self.assertRaises(ExcelError):combine_imports([a,b])
  def test_changed_budget_formula_is_rejected(self):
-  b=Book(template('预算基础'));b.cells['资产负债表']['C63']=('formula','0')
-  with self.assertRaisesRegex(ExcelError,'公式被修改'):import_excel(rewrite(template('预算基础'),b))
+  b=Book(fixture('预算基础'));b.cells['资产负债表']['C63']=('formula','0')
+  with self.assertRaisesRegex(ExcelError,'公式被修改'):import_excel(rewrite(fixture('预算基础'),b))
  def test_source_xlsx_with_external_link_is_rejected(self):
   out=io.BytesIO()
   with zipfile.ZipFile(io.BytesIO(template('预算基础'))) as src,zipfile.ZipFile(out,'w') as dst:
