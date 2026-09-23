@@ -79,10 +79,21 @@ def main(req, emit=None):
         return import_excel(base64.b64decode(req['data'], validate=True), req['name'])
     if req['op'] == 'generate_excel':
         from excel_generate import generate, demo_input
-        template=(ROOT / 'desktop/templates/唯一输入模板.xlsx').read_bytes()
+        from excel_ingest import import_excel
+        from external_generate import industry_demo, change_demo
         hashes=json.loads((ROOT / 'desktop/templates/数值黑名单哈希.json').read_text(encoding='utf-8'))
-        raw, imported=generate(template,req['seed'],req.get('entity','主体甲'),req.get('scenario','基础情景'),req.get('grain','月度'),hashes)
-        return {'base64':base64.b64encode(raw).decode(), 'imported':imported, 'input':demo_input(imported)}
+        seed=req['seed'];entity=req.get('entity','主体甲');scenario=req.get('scenario','基础情景');grain=req.get('grain','月度')
+        files=[];items=[]
+        for kind in ('预算基础','实时经营'):
+            template=(ROOT / f'desktop/templates/{kind}输入模板.xlsx').read_bytes()
+            raw,imported=generate(template,seed,entity,scenario,grain,hashes)
+            files.append({'category':kind,'base64':base64.b64encode(raw).decode()});items.append(imported)
+        meta=items[0]['metadata'];arguments=(seed,meta['主体编码'],entity,meta['情景编码'],scenario,int(meta['年度']),grain)
+        raw=industry_demo((ROOT/'desktop/templates/行业对标输入模板.xlsx').read_bytes(),*arguments,hashes)
+        files.append({'category':'行业对标','base64':base64.b64encode(raw).decode()});items.append(import_excel(raw,'行业对标.xlsx'))
+        raw=change_demo((ROOT/'desktop/templates/经营变更输入模板.xlsx').read_bytes(),*arguments,hashes)
+        files.append({'category':'经营变更','base64':base64.b64encode(raw).decode()});items.append(import_excel(raw,'经营变更.xlsx'))
+        return {'files':files,'imported':items,'input':demo_input(items),'checks':sum(x.get('checks',0) for x in items)}
     op = req['op']
     if op == 'extract':
         import pymupdf

@@ -40,8 +40,9 @@ def source_structure(source):
     # The raw blacklist lives only in memory. Deliverable evidence contains hashes and counts.
     return layout,numbers,texts,{'sourceNumericCells':numeric_count,'uniqueNumericValues':len(numbers),'sourceFormulaCells':formula_count}
 
-def make_plan(source,seed=20260923,entity='主体甲',scenario='基础情景',grain='月度',year=2027):
-    layout,blacklist,texts,evidence=source_structure(source);rng=random.Random(f'{seed}|{entity}|{scenario}')
+def make_plan(source,seed=20260923,entity='主体甲',scenario='基础情景',grain='月度',year=2027,category='预算基础'):
+    if category not in ('预算基础','实时经营'):raise ValueError('源十二表只适用于预算基础和实时经营')
+    layout,blacklist,texts,evidence=source_structure(source);rng=random.Random(f'{seed}|{entity}|{scenario}|{category}')
     plan={s:{'values':dict(layout[s]['labels']),'formulas':{},'merges':layout[s]['merges'],'columns':layout[s]['columns']} for s in SHEETS}
     def val(s,a,x):plan[s]['values'][a]=x;plan[s]['formulas'].pop(a,None)
     def formula(s,a,x):plan[s]['formulas'][a]='='+x.lstrip('=');plan[s]['values'].pop(a,None)
@@ -52,13 +53,13 @@ def make_plan(source,seed=20260923,entity='主体甲',scenario='基础情景',gr
         val(s,a,float(x));return x
     metadata=[VERSION,'E-'+hashlib.sha256(entity.encode()).hexdigest()[:10],entity,
               'S-'+hashlib.sha256(scenario.encode()).hexdigest()[:10],scenario,str(year),grain,
-              '演示占位-v1','模拟权责发生制',f'{year}-01',f'{year}-06','无','无','占位','种子-'+str(seed)]
+              '演示占位-v1','模拟权责发生制',f'{year}-01',f'{year}-06','无','无','占位','种子-'+str(seed),category]
     for s in SHEETS:
         for r,(k,v) in enumerate(zip(META,metadata),1):val(s,f'AX{r}',k);val(s,f'AY{r}',v)
-        val(s,'AX17','使用说明');val(s,'AY17','蓝色为输入参数；实际数为占位；金额单位：元')
+        val(s,'AX17','使用说明');val(s,'AY17',f'蓝色为{category}输入参数；示例数值为占位；金额单位：元')
         val(s,'AX18','计算链说明');val(s,'AY18','副本已补齐缺失计算链；原文件未修改')
-    # 预算和实际同一本：费用维持原 C:N 月度与 O 小计，实际块向下平移 60 行。
-    for off,kind in ((0,'预算基础'),(60,'实时经营')):
+    # 预算与实际用完全相同的十二表版式，分成两份文件，类别仅在元字段区分。
+    for off,kind in ((0,category),):
         for s in SHEETS[6:9]:
             val(s,f'A{1+off}',s if s!='蓝恐龙费用' else '其他主体费用')
             val(s,f'C{2+off}',kind+'（月度，元）')
@@ -152,12 +153,12 @@ def make_plan(source,seed=20260923,entity='主体甲',scenario='基础情景',gr
             f('资产负债表',67,f'SUM({c}{65+off}:{c}{66+off})')
             f('资产负债表',68,f'SUM({c}{64+off},{c}{67+off})')
         # 原报表表头和科目位置保留，原年度展示区域链接新月度计算链。
-        outcol='C' if off==0 else 'D'
+        outcol='C'
         for r,monthly in ((4,61),(5,62),(6,63),(7,64),(8,65),(14,67),(18,67),(19,68),(20,69)):
             formula('利润表',f'{outcol}{r}',f'SUM(C{monthly+off}:N{monthly+off})')
         formula('利润表',f'{outcol}8',f'SUM(C{65+off}:N{66+off})')
         formula('资产负债表',f'{outcol}4',f'N{61+off}');formula('资产负债表',f'{outcol}34',f'N{62+off}');formula('资产负债表',f'{outcol}40',f'N{63+off}')
-        right='G' if off==0 else 'H'
+        right='G'
         for r,monthly in ((29,64),(32,65),(34,65),(38,66),(39,67),(40,68)):formula('资产负债表',f'{right}{r}',f'N{monthly+off}')
         for r,monthly in ((13,63),(26,64),(36,65),(38,66)):
             formula('现金流量表',f'{outcol}{r}',f'SUM(C{monthly+off}:N{monthly+off})')
@@ -176,18 +177,14 @@ def make_plan(source,seed=20260923,entity='主体甲',scenario='基础情景',gr
     for m in range(12):
         c=col(m+3);r=151+m*2
         val('分录',f'A{r}',f'{year}-{m+1:02}');val('分录',f'B{r}','银行存款')
-        formula('分录',f'C{r}',f"'利润表'!{c}121");formula('分录',f'D{r}','0')
+        formula('分录',f'C{r}',f"'利润表'!{c}61");formula('分录',f'D{r}','0')
         val('分录',f'B{r+1}','主营业务收入');formula('分录',f'C{r+1}','0');formula('分录',f'D{r+1}',f'C{r}')
         val('分录',f'E{r}','占位收入分录，非完整总账')
-    # 行业占位均标明构造参考；真实公开来源单独附规格报告，避免错当影视业行业均值。
-    for i,h in enumerate(BENCH_HEADERS,2):val('费用表月度汇总',f'{col(i)}180',h)
-    for r,name in enumerate(('毛利率','采购成本变动率','产能利用率','费用阈值','原材料指数'),181):
-        val('费用表月度汇总',f'B{r}',name);input_num('费用表月度汇总',f'C{r}',13.17,27.93)
-        for c,x in zip('DEFGHI',('%' if r!=185 else '指数','构造参考值',str(year),'确定性演示生成器','演示参数，无统计总体','不可作为真实行业均值')):val('费用表月度汇总',f'{c}{r}',x)
+    # 行业参考由单独的《行业对标输入模板》提供，十二表只承载本类别。
     # 原件合计公式：在同一位置且数学关系完全一致时保留原文本。
     for s in SHEETS[:3]:
-        val(s,'C3','全年预算');val(s,'D3','全年实际占位')
-    val('资产负债表','G2','全年预算');val('资产负债表','H2','全年实际占位')
+        val(s,'C3',f'全年{category}');val(s,'D3','非本次输入')
+    val('资产负债表','G2',f'全年{category}');val('资产负债表','H2','非本次输入')
     val('利润表','C2',entity+' / '+scenario);val('利润表','F2','其他主体费用计入管理费用展示')
     retained=0
     for s in SHEETS:
@@ -201,5 +198,5 @@ def make_plan(source,seed=20260923,entity='主体甲',scenario='基础情景',gr
 
 if __name__=='__main__':
     sys.stdout.reconfigure(encoding='utf-8')
-    plan=make_plan(sys.argv[1]);Path(sys.argv[2]).write_text(json.dumps(plan,ensure_ascii=False),encoding='utf-8')
+    plan=make_plan(sys.argv[1],category=sys.argv[3] if len(sys.argv)>3 else '预算基础');Path(sys.argv[2]).write_text(json.dumps(plan,ensure_ascii=False),encoding='utf-8')
     print(json.dumps(plan['evidence'],ensure_ascii=False))

@@ -14,7 +14,9 @@ def _generate_once(template,seed,entity='主体甲',scenario='基础情景',grai
     if type(seed)!=int or not 0<=seed<=2**32-1:raise ExcelError('种子必须为 0 到 4294967295 的整数')
     if grain not in ('月度','季度'):raise ExcelError('期间粒度非法')
     if any(not isinstance(s,str) or not 1<=len(s)<=40 or re.search(r'[<>\x00-\x1f]',s) for s in (entity,scenario)):raise ExcelError('主体/情景名称须为 1 至 40 个普通字符')
-    book=Book(template);rng=random.Random(f'{seed}|{entity}|{scenario}')
+    book=Book(template);category=book.value('利润表','AY16')
+    if category not in ('预算基础','实时经营'):raise ExcelError('演示生成只接受预算基础或实时经营十二表')
+    rng=random.Random(f'{seed}|{entity}|{scenario}|{category}')
     blocked=set(blacklist_hashes)
     updates={'主体编码':'E-'+hashlib.sha256(entity.encode()).hexdigest()[:10],'主体名称':entity,
         '情景编码':'S-'+hashlib.sha256(scenario.encode()).hexdigest()[:10],'情景名称':scenario,
@@ -91,10 +93,40 @@ def rewrite(template,book):
             zout.writestr(info,data)
     return out.getvalue()
 
+def combine_imports(items):
+    """同主体、情景、年度、粒度的四种文件汇成内部旧八字段结构。"""
+    if not items:raise ExcelError('导入批次不能为空')
+    keys={x['groupKey'] for x in items};categories=[x['category'] for x in items]
+    if len(keys)!=1 or len(categories)!=len(set(categories)):raise ExcelError('同组类别重复或主体、情景、期间不一致')
+    by={x['category']:x for x in items}
+    if not {'预算基础','实时经营'}<=set(by):raise ExcelError('分析须同时提供同版式的预算基础和实时经营工作簿')
+    ref=by['预算基础']['metadata']
+    for item in items:
+        meta=item['metadata']
+        for key in ('数据版本号','口径标记','生效周期','已结账截至'):
+            if meta[key]!=ref[key]:raise ExcelError(f'四类文件 {key} 不一致')
+    groups=('yusuan','shishi','hangye','biangeng','jujue')
+    records={g:[row for item in items for row in item['records'][g]] for g in groups}
+    records['ruku_shu']=sum(len(records[g]) for g in groups[:-1])
+    ledger=by.get('经营变更',{}).get('events',[])
+    dedup={}
+    for event in ledger:
+        key=(event['kemu'],event['period'])
+        if key in dedup:
+            dedup[key]['reason']+='；'+event['reason']
+            dedup[key]['structural']=dedup[key]['structural'] or event['structural']
+        else:dedup[key]=dict(event)
+    return {'records':records,'metadata':ref,'scope':by['实时经营']['scope'],'subjects':by['预算基础']['subjects'],
+            'simulation':any(x['simulation'] for x in items),'benchmarks':by.get('行业对标',{}).get('benchmarks',[]),
+            'procurement':[x for item in items for x in item.get('procurement',[])],
+            'events':list(dedup.values()),'groupKey':by['预算基础']['groupKey'],'categories':categories,
+            'checks':sum(x.get('checks',0) for x in items)}
+
 def demo_input(imported):
-    """占位专业参数不伪造评分；可由现有 UI 后续补全。"""
+    """四类文件合并后沿用旧计算接口；专业评分留待用户补充。"""
+    if isinstance(imported,list):imported=combine_imports(imported)
     return {'company':imported['metadata']['主体名称']+' / '+imported['metadata']['情景名称'],
         'simulation':imported['simulation'],'records':imported['records'],'subjects':imported['subjects'],
         'config':dict(imported['scope'],growth=0,industry=None,industryCorrection=False,industryThreshold=50,noise=2500,significance=2500,
             tiers=[{'ming_cheng':'黄','yu_fen':1500,'yan_se':'#ebbf69'},{'ming_cheng':'红','yu_fen':3000,'yan_se':'#e68b8e'}]),
-        'bsc':None,'kpi':{},'splits':[],'events':[],'traces':[],'baselines':[]}
+        'bsc':None,'kpi':{},'splits':[],'events':imported.get('events',[]),'traces':[],'baselines':[]}

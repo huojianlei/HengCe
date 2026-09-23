@@ -18,8 +18,8 @@ if($LASTEXITCODE -ne 0){throw '桌面资源隔离构建失败'}
 foreach($name in 'query_kb2.py','build_kb2.py','guanli_ku.sqlite'){Copy-Item -LiteralPath (Join-Path $sharedRoot "kb2\$name") -Destination (Join-Path $packageRoot 'kb2') -Force}
 Copy-Item -LiteralPath (Join-Path $sharedRoot 'kb2\models') -Destination (Join-Path $packageRoot 'kb2') -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'fenxi\analysis_generator.py') -Destination (Join-Path $packageRoot 'fenxi') -Force
-foreach($name in 'model_api.py','data_ingest.py','excel_contract.py','xlsx_reader.py','excel_ingest.py','excel_generate.py'){Copy-Item -LiteralPath (Join-Path $projectRoot "algo\$name") -Destination (Join-Path $packageRoot 'algo') -Force}
-foreach($name in '模板结构规范.json','数值黑名单哈希.json'){Copy-Item -LiteralPath (Join-Path $projectRoot "desktop\templates\$name") -Destination (Join-Path $packageRoot 'desktop\templates') -Force}
+foreach($name in 'model_api.py','data_ingest.py','excel_contract.py','xlsx_reader.py','excel_ingest.py','excel_generate.py','external_templates.py','external_generate.py'){Copy-Item -LiteralPath (Join-Path $projectRoot "algo\$name") -Destination (Join-Path $packageRoot 'algo') -Force}
+foreach($name in '模板结构规范-预算基础.json','模板结构规范-实时经营.json','数值黑名单哈希.json'){Copy-Item -LiteralPath (Join-Path $projectRoot "desktop\templates\$name") -Destination (Join-Path $packageRoot 'desktop\templates') -Force}
 Copy-Item -LiteralPath (Join-Path $projectRoot 'desktop\README.md') -Destination (Join-Path $packageRoot '使用说明.md') -Force
 $nodePath=(Get-Command node.exe).Source
 Copy-Item -LiteralPath $nodePath -Destination (Join-Path $packageRoot 'runtime\node.exe') -Force

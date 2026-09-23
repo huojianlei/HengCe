@@ -8,12 +8,12 @@ child.stderr.resume();const [ready]=await once(child.stdout,'data');const url=JS
 try{
  const token=(await(await fetch(url+'/api/bootstrap')).json()).token;
  async function api(name,data){const r=await fetch(url+'/api/'+name,{method:'POST',headers:{'Content-Type':'application/json','X-Finagent-Token':token},body:JSON.stringify(data)});const body=await r.json();if(!r.ok)throw Error(name+': '+body.error);return body;}
- const template=await fs.readFile(path.join(pkg,'desktop/templates/唯一输入模板.xlsx'));
- const imported=await api('import',{name:'唯一输入模板.xlsx',base64:template.toString('base64')});
- if(imported.checks!==452||imported.records.ruku_shu!==1710)throw Error('包内导入结果不符');
+ const template=await fs.readFile(path.join(pkg,'desktop/templates/预算基础输入模板.xlsx'));
+ const imported=await api('import',{name:'预算基础输入模板.xlsx',base64:template.toString('base64')});
+ if(imported.checks!==226||imported.records.ruku_shu!==1140)throw Error('包内预算导入结果不符');
  const demo=await api('demo-excel',{seed:19,entity:'包内主体',scenario:'基础情景',grain:'季度'});
- if(demo.checks!==452||demo.input.config.cycle!=='季度')throw Error('包内种子生成失败');
+ if(demo.files.length!==4||demo.checks!==452||demo.input.config.cycle!=='季度')throw Error('包内四类种子生成失败');
  const run=await api('analyze',{...demo.input,probe:true});
  if(!run.result?.meta?.simulation)throw Error('包内计算未完成');
- console.log(JSON.stringify({ok:true,package:pkg,checks:imported.checks,rows:imported.records.ruku_shu,quarter:true}));
+ console.log(JSON.stringify({ok:true,package:pkg,templates:4,checks:demo.checks,rows:demo.input.records.ruku_shu,quarter:true}));
 }finally{child.kill();}

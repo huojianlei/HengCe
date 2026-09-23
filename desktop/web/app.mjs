@@ -7,20 +7,35 @@ const emptyDashboard=$('dashboard-content').innerHTML;
 let token='',result=null,records=null,subjectRows=[],reportUrl=null,confirmAction=null;
 let savedHtml='';
 let excelGroups=[];
-function excelInput(g){return {company:g.metadata['主体名称']+' / '+g.metadata['情景名称'],simulation:g.simulation,records:g.records,subjects:g.subjects,config:{...g.scope,growth:0,industry:null,industryCorrection:false,industryThreshold:50,noise:2500,significance:2500,tiers:[{ming_cheng:'黄',yu_fen:1500,yan_se:'#ebbf69'},{ming_cheng:'红',yu_fen:3000,yan_se:'#e68b8e'}]},bsc:null,kpi:{},splits:[],events:[],traces:[],baselines:[]};}
+function composeExcelGroup(files){
+ const by=Object.fromEntries(files.map(f=>[f.category,f]));
+ if(Object.keys(by).length!==files.length)throw new Error('同一主体与情景的数据类别重复，请先替换对应文件。');
+ const ref=by['预算基础']??by['实时经营']??files[0],meta=ref.metadata;
+ for(const f of files)for(const k of ['数据版本号','口径标记','生效周期','已结账截至'])if(f.metadata[k]!==meta[k])throw new Error(`四类文件的${k}不一致`);
+ const records=Object.fromEntries(['yusuan','shishi','hangye','biangeng','jujue'].map(k=>[k,files.flatMap(f=>f.records[k])]));
+ records.ruku_shu=['yusuan','shishi','hangye','biangeng'].reduce((n,k)=>n+records[k].length,0);
+ const events=new Map();for(const x of by['经营变更']?.events??[]){const key=x.kemu+'\0'+x.period,old=events.get(key);if(old){old.reason+='；'+x.reason;old.structural||=x.structural;}else events.set(key,{...x});}
+ return {groupKey:ref.groupKey,files,metadata:meta,records,subjects:(by['预算基础']??by['实时经营'])?.subjects??[],
+  scope:(by['实时经营']??ref).scope,simulation:files.some(f=>f.simulation),events:[...events.values()],
+  benchmarks:by['行业对标']?.benchmarks??[],procurement:files.flatMap(f=>f.procurement??[]),
+  checks:files.reduce((n,f)=>n+(f.checks??0),0),categories:files.map(f=>f.category)};
+}
+function excelInput(g){return {company:g.metadata['主体名称']+' / '+g.metadata['情景名称'],simulation:g.simulation,records:g.records,subjects:g.subjects,config:{...g.scope,growth:0,industry:null,industryCorrection:false,industryThreshold:50,noise:2500,significance:2500,tiers:[{ming_cheng:'黄',yu_fen:1500,yan_se:'#ebbf69'},{ming_cheng:'红',yu_fen:3000,yan_se:'#e68b8e'}]},bsc:null,kpi:{},splits:[],events:g.events,traces:[],baselines:[]};}
 function selectExcelGroup(index){
  const g=excelGroups[index];if(!g)return;
  setInput(excelInput(g));
- $('excel-context').textContent=`${g.metadata['数据版本号']} · ${g.metadata['口径标记']} · 实际数：${g.metadata['实际数据状态']} · 勾稽 ${g.checks} 项通过。行业参考 ${g.benchmarks.length} 项，采购占位 ${g.procurement.length} 行（未重复计入成本）。`;
+ $('excel-context').textContent=`已导入：${g.categories.join('、')}。${g.metadata['数据版本号']} · ${g.metadata['口径标记']} · 勾稽 ${g.checks} 项通过。行业参考 ${g.benchmarks.length} 项，采购明细 ${g.procurement.length} 行。${g.categories.includes('实时经营')?'':'运行分析前还需导入同版式的实时经营文件。'}`;
 }
 function acceptExcelBatch(batch,append=false){
- const next=append?[...excelGroups,...batch]:batch;const seen=new Set();
- for(const g of next){if(!g.groupKey)throw new Error('文件缺少主体与情景信息');if(seen.has(g.groupKey))throw new Error('同一主体、情景和期间粒度重复；请使用替换导入。');seen.add(g.groupKey);}
+ const files=[...(append?excelGroups.flatMap(g=>g.files):[]),...batch];const grouped=new Map();
+ for(const item of files){if(!item.groupKey||!item.category)throw new Error('文件缺少主体、情景或数据类别');const list=grouped.get(item.groupKey)??[];list.push(item);grouped.set(item.groupKey,list);}
+ const next=[...grouped.values()].map(composeExcelGroup);
  excelGroups=next;$('excel-group').replaceChildren(...next.map((g,i)=>{const o=document.createElement('option');o.value=i;o.textContent=g.metadata['主体名称']+' / '+g.metadata['情景名称']+' / '+g.metadata['期间粒度'];return o;}));
  selectExcelGroup(0);
 }
 $('excel-group').onchange=()=>selectExcelGroup(Number($('excel-group').value));
 $('analyze-batch').onclick=()=>work('正在分别分析全部主体与情景…',async()=>{
+ for(const g of excelGroups)if(!g.categories.includes('预算基础')||!g.categories.includes('实时经营'))throw new Error(`${g.metadata['主体名称']} / ${g.metadata['情景名称']} 缺少预算基础或实时经营文件`);
  const r=await api('analyze-batch',{inputs:excelGroups.map(excelInput)});
  $('batch-results').replaceChildren(...r.results.map(x=>{const p=document.createElement('p');p.textContent=x.result.meta.company+'：'+x.file;return p;}));show(`已分别完成 ${r.results.length} 组分析，结果已保存。`);
 });

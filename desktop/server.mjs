@@ -118,9 +118,12 @@ async function route(url,data) {
     const r=await python({op:'generate_excel',seed:data.seed,entity:data.entity,scenario:data.scenario,grain:data.grain});
     const result=analyze(r.input); // 用真实引擎预跑；失败不得导出。
     await fs.mkdir(settings.outputDir,{recursive:true});
-    const file=path.join(settings.outputDir,`演示输入模板-种子${data.seed}-${randomUUID().slice(0,8)}.xlsx`);
-    await fs.writeFile(file,Buffer.from(r.base64,'base64'));
-    return {file,imported:r.imported,input:r.input,verified:true,checks:r.imported.checks};
+    const files=[];
+    for(const item of r.files){
+      const file=path.join(settings.outputDir,`${item.category}-演示输入-种子${data.seed}-${randomUUID().slice(0,8)}.xlsx`);
+      await fs.writeFile(file,Buffer.from(item.base64,'base64'));files.push({category:item.category,file});
+    }
+    return {files,imported:r.imported,input:r.input,verified:true,checks:r.checks};
   }
   if(url==='/api/analyze-batch'){
     if(!Array.isArray(data.inputs)||!data.inputs.length)throw new Error('批次不能为空');

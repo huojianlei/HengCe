@@ -7,5 +7,8 @@
   "/style.css": "web/style.css",
   "/fields.mjs": "web/fields.mjs",
   "/experimental/entry.mjs": "experimental/entry.mjs",
-  "/template.xlsx": "templates/唯一输入模板.xlsx"
+  "/template-budget.xlsx": "templates/预算基础输入模板.xlsx",
+  "/template-actual.xlsx": "templates/实时经营输入模板.xlsx",
+  "/template-industry.xlsx": "templates/行业对标输入模板.xlsx",
+  "/template-change.xlsx": "templates/经营变更输入模板.xlsx"
 }
