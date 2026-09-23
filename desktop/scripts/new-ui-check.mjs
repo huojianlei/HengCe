@@ -29,9 +29,14 @@ try{
  await page.locator('#analyze-batch').click();await page.locator('#message').getByText('已分别完成 2 组分析',{exact:false}).waitFor({timeout:45000});
  await page.locator('#sec-export').evaluate(el=>el.open=true);await page.locator('#btn-generate').click();await page.locator('#report-dialog').waitFor();await page.locator('#close-report').click();
  await page.screenshot({path:path.join(dataDir,'三栏主体乙.png'),fullPage:true});
+ await page.locator('#sec-demo').evaluate(el=>el.open=true);await page.locator('#excel-entity').fill('界面演示主体');await page.locator('#excel-scenario').fill('演示检验情景');await page.locator('#demo-run').click();
+ await page.locator('#message').getByText('分析完成；已核验',{exact:false}).waitFor({timeout:90000});
+ if(!(await page.locator('#company-context').innerText()).includes('界面演示主体'))throw Error('演示入口未绑定新UI主体');
+ if(await page.locator('#demo-files p').count()!==4)throw Error('演示入口未导出四份文件');
+ if(!(await page.locator('#import-summary').innerText()).includes('已导入台账'))throw Error('演示入口未接收四类工作簿');
  await page.setViewportSize({width:1024,height:768});await page.waitForTimeout(300);if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('1024px 横向溢出');
  await page.screenshot({path:path.join(dataDir,'三栏1024.png'),fullPage:true});
  if(errors.length)throw Error(errors.join('；'));
- console.log(JSON.stringify({ok:true,templates:4,groups:2,batch:2,missingChangeConfirmation:true,permissionDefaultOff:true,reportPreview:true,viewport1024:true,pageErrors:0}));
+ console.log(JSON.stringify({ok:true,templates:4,groups:2,batch:2,missingChangeConfirmation:true,permissionDefaultOff:true,reportPreview:true,seededDemo:true,viewport1024:true,pageErrors:0}));
 }finally{await context.close();server.kill();if(stderr)console.error(stderr.slice(-1000));}
 

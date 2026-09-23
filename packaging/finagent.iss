@@ -43,6 +43,7 @@ DisableReadyPage=yes
 Uninstallable=yes
 CreateUninstallRegKey=yes
 UninstallDisplayIcon={app}\FinAgent.exe
+SetupIconFile={#PackageRoot}\衡策图标.ico
 AppMutex={#AppRunningMutex}
 CloseApplications=no
 RestartApplications=no
@@ -66,9 +67,9 @@ Type: files; Name: "{app}\desktop\web\demo.json"
 #endif
 
 [Icons]
-Name: "{group}\{#AppShortName}"; Filename: "{app}\FinAgent.exe"; WorkingDir: "{app}"
+Name: "{group}\{#AppShortName}"; Filename: "{app}\FinAgent.exe"; WorkingDir: "{app}"; IconFilename: "{app}\衡策图标.ico"
 Name: "{group}\卸载{#AppShortName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#AppShortName}"; Filename: "{app}\FinAgent.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autodesktop}\{#AppShortName}"; Filename: "{app}\FinAgent.exe"; WorkingDir: "{app}"; IconFilename: "{app}\衡策图标.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\FinAgent.exe"; Description: "启动衡策预算工作台"; Flags: nowait postinstall skipifsilent

@@ -4,6 +4,7 @@ $projectRoot=Split-Path $PSScriptRoot -Parent
 $sharedRoot=Split-Path $projectRoot -Parent
 $env:TEMP=Join-Path $projectRoot '临时'
 $env:TMP=$env:TEMP
+$env:PYTHONDONTWRITEBYTECODE='1'
 New-Item -ItemType Directory -Force $env:TEMP | Out-Null
 if(-not $Destination){$Destination=Join-Path $projectRoot $(if($Flavor -eq 'Experimental'){'dist\FinAgent'}else{'dist\FinAgent-Production'})}
 $packageRoot=[IO.Path]::GetFullPath($Destination)
@@ -34,8 +35,11 @@ if(-not $SkipRuntime){
 }
 $compiler=Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $webview2=Join-Path $PSScriptRoot 'libs\webview2'
+$appIcon=Join-Path $PSScriptRoot 'assets\衡策图标.ico'
+if(-not (Test-Path -LiteralPath $appIcon)){throw '缺少用户指定的衡策图标，请先运行 packaging/prepare-icon.ps1'}
+Copy-Item -LiteralPath $appIcon -Destination (Join-Path $packageRoot '衡策图标.ico') -Force
 foreach($name in 'Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll','WebView2Loader-x64.dll'){if(-not (Test-Path -LiteralPath (Join-Path $webview2 $name))){throw "缺少 WebView2 SDK 程序集 $name；请参照 packaging/libs/webview2/VERSION.txt 下载并解包"}}
-& $compiler /nologo /target:winexe /platform:x64 /optimize+ /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:"$webview2\Microsoft.Web.WebView2.Core.dll" /reference:"$webview2\Microsoft.Web.WebView2.WinForms.dll" "/out:$packageRoot\FinAgent.exe" (Join-Path $PSScriptRoot 'Launcher.cs')
+& $compiler /nologo /target:winexe /platform:x64 /optimize+ "/win32icon:$appIcon" /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:"$webview2\Microsoft.Web.WebView2.Core.dll" /reference:"$webview2\Microsoft.Web.WebView2.WinForms.dll" "/out:$packageRoot\FinAgent.exe" (Join-Path $PSScriptRoot 'Launcher.cs')
 if($LASTEXITCODE -ne 0){throw '启动器编译失败'}
 # Managed assemblies and the x64 native loader must sit next to FinAgent.exe at runtime.
 foreach($name in 'Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll'){Copy-Item -LiteralPath (Join-Path $webview2 $name) -Destination $packageRoot -Force}

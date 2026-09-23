@@ -27,6 +27,9 @@ while pending:
     for entry in dist.files or []:
         src=Path(dist.locate_file(entry)).resolve()
         if not src.is_relative_to(site) or not src.is_file() or '__pycache__' in src.parts:continue
+        # KB uses onnxruntime.InferenceSession only. Do not ship optional
+        # transformer conversion/benchmark suites (including llama tooling).
+        if src.relative_to(site).parts[:2] == ('onnxruntime','transformers'):continue
         dst=out/src.relative_to(site)
         if not dst.resolve().is_relative_to(target):raise ValueError('Runtime target escapes package')
         dst.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(src,dst)

@@ -67,7 +67,7 @@ internal static class Launcher {
             if (!lineTask.Wait(30000) || String.IsNullOrEmpty(lineTask.Result)) { try { server.Kill(); } catch {} throw new Exception("本地服务启动超时"); }
             url = Regex.Match(lineTask.Result, @"http://127\.0\.0\.1:\d+").Value;
             if (String.IsNullOrEmpty(url)) throw new Exception("本地服务未返回有效地址");
-            tray = new NotifyIcon { Icon = SystemIcons.Application, Text = "衡策 · 智能预算分析", Visible = true };
+            tray = new NotifyIcon { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath), Text = "衡策 · 智能预算分析", Visible = true };
             var menu = new ContextMenuStrip();
             menu.Items.Add("打开预算工作台", null, (s,e) => Open());
             menu.Items.Add("退出衡策", null, (s,e) => ExitThread());
@@ -89,7 +89,7 @@ internal static class Launcher {
             form.StartPosition = FormStartPosition.CenterScreen;
             form.Size = new Size(1440, 960);
             form.MinimumSize = new Size(1024, 640);
-            form.Icon = SystemIcons.Application;
+            form.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
             var web = new WebView2();
             web.Dock = DockStyle.Fill;
             web.CreationProperties = new CoreWebView2CreationProperties();

@@ -1,4 +1,4 @@
-﻿param([string]$Package='D:\AppProject\dist\FinAgent-Production', [string]$Compiler='', [string]$OutputDirectory='')
+﻿param([string]$Package='D:\AppProject\dist\FinAgent-Production', [string]$Compiler='', [string]$OutputDirectory='', [switch]$ZipOnly)
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path $PSScriptRoot -Parent
 $env:TEMP=Join-Path $projectRoot '临时'
@@ -18,8 +18,10 @@ if($flavor -eq 'Production'){
 if(-not $Compiler){$Compiler=Join-Path (Split-Path $projectRoot -Parent) 'tools\InnoSetup\ISCC.exe'}
 if(-not (Test-Path -LiteralPath $Compiler)){throw '缺少 Inno Setup 编译器；请参考 packaging/README.md 安装便携编译器'}
 New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
-& $Compiler "/DPackageRoot=$packageRoot" "/DOutputRoot=$outputRoot" "/DAppFlavor=$flavor" (Join-Path $PSScriptRoot 'finagent.iss')
-if($LASTEXITCODE -ne 0){throw '标准 Windows 安装器编译失败'}
+if(-not $ZipOnly){
+ & $Compiler "/DPackageRoot=$packageRoot" "/DOutputRoot=$outputRoot" "/DAppFlavor=$flavor" (Join-Path $PSScriptRoot 'finagent.iss')
+ if($LASTEXITCODE -ne 0){throw '标准 Windows 安装器编译失败'}
+}elseif(-not (Test-Path -LiteralPath (Join-Path $outputRoot '衡策-1.0.5-安装包.exe'))){throw 'ZipOnly 需要已有的本轮安装器'}
 $zipPath=Join-Path $outputRoot '衡策-1.0.5-便携包.zip'
 $setupPath=Join-Path $outputRoot '衡策-1.0.5-安装包.exe'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -28,7 +30,7 @@ $zipStream=[IO.File]::Open($zipPath,[IO.FileMode]::CreateNew)
 try {
  $zipArchive=[IO.Compression.ZipArchive]::new($zipStream,[IO.Compression.ZipArchiveMode]::Create,$false)
  try {
-  Get-ChildItem -LiteralPath $packageRoot -File -Recurse | Where-Object { $_.FullName -notmatch '[\\/]qa-模板包内验证[\\/]' } | ForEach-Object {
+  Get-ChildItem -LiteralPath $packageRoot -File -Recurse | Where-Object { $_.FullName -notmatch '[\\/](qa-模板包内验证|__pycache__)[\\/]|\.pyc$' } | ForEach-Object {
    $relative=$_.FullName.Substring($packageRoot.Length+1).Replace('\','/')
    [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zipArchive,$_.FullName,$relative,[IO.Compression.CompressionLevel]::Optimal) | Out-Null
   }
