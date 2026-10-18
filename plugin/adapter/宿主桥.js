@@ -30,11 +30,14 @@
   function yuchu(zhi) {
     if (!zhi || typeof zhi !== 'object') return zhi;
     if (zhi instanceof ArrayBuffer || zhi instanceof Uint8Array) {
-      return { bytesB64: zhuan_b64(zhi) };
+      return zhuan_b64(zhi);
     }
     if (Array.isArray(zhi)) return zhi.map(yuchu);
     const out = {};
-    for (const k of Object.keys(zhi)) out[k] = yuchu(zhi[k]);
+    for (const k of Object.keys(zhi)) {
+      const v = zhi[k];
+      out[(v instanceof ArrayBuffer || v instanceof Uint8Array) ? k + 'B64' : k] = yuchu(v);
+    }
     return out;
   }
 

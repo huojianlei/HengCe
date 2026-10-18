@@ -413,6 +413,15 @@ def pao_fenxi(zt, ui_cfg=None):
 
     # 载荷组装（与 跑衡策全流程.zao_zaihe 同形；配置来自 UI）
     md_yu = yu.get('metadata', {})
+    md_shi = shi.get('metadata', {})
+    pei = zuhe_peizhi(ui_cfg or zt.get('config'))
+    if not pei.get('period'):
+        # 期间缺省口径与 zao_zaihe 一致：实时经营「已结账截至」→ 预算「生效周期」
+        zhou = md_shi.get('已结账截至') or md_yu.get('生效周期') or ''
+        if pei.get('cycle') == '月度' and len(zhou) > 7:
+            zhou = zhou[:7]
+        if zhou:
+            pei['period'] = zhou
     zaihe = {
         'company': md_yu.get('主体名称', yu['entity']),
         'metadata': {'主体名称': md_yu.get('主体名称', yu['entity']),
@@ -421,7 +430,7 @@ def pao_fenxi(zt, ui_cfg=None):
                      '情景编码': md_yu.get('情景编码', 'S-BASE')},
         'records': jilu,
         'subjects': yu.get('subjects', []),
-        'config': zuhe_peizhi(ui_cfg or zt.get('config')),
+        'config': pei,
         'bsc': None, 'kpi': {}, 'traces': [], 'splits': [], 'events': [],
         'baselines': [],
         # 经营变更：UI yes → 有经营变更册则 provided，否则 pending（接入说明口径）
@@ -531,7 +540,11 @@ def _(zt, payload):
         ming = w.get('name', '')
         if not ming.lower().endswith('.xlsx'):
             raise RuntimeError(f'{ming}：只接受 .xlsx 工作簿')
-        zjie = base64.b64decode(w.get('bytesB64', ''))       # 适配器已转 base64
+        # 字节两形状兼容：顶层 bytesB64（桥已打平）或 bytes:{bytesB64}（旧形状）
+        b64 = w.get('bytesB64') or ''
+        if not b64 and isinstance(w.get('bytes'), dict):
+            b64 = w['bytes'].get('bytesB64') or ''
+        zjie = base64.b64decode(b64)                  # 空字节会在契约层如实报错
         jie = import_excel_v11(zjie, ming)                    # 抛 ExcelError（中文文案）
         md = jie.get('metadata', {})
         # 同类同主体旧册让位（一类一主体一册；旧文本不再参与分析）
@@ -583,11 +596,13 @@ def _(zt, payload):
 
 @dongzuo('background.save')
 def _(zt, payload):
-    """保存经营背景与变更状态（自由文本不自动认定正式变更台账）。"""
+    """保存经营背景与变更状态（值未变化时不置脏——避免无感保存锁报告）。"""
     b = payload or {}
-    zt['background'] = {'changeStatus': b.get('changeStatus', 'unknown'),
-                        'text': b.get('text', '')}
-    zt['dirty'] = True
+    xin = {'changeStatus': b.get('changeStatus', 'unknown'),
+           'text': b.get('text', '')}
+    if xin != (zt.get('background') or {}):
+        zt['background'] = xin
+        zt['dirty'] = True
     return fang_kuaizhao(zt)
 
 
