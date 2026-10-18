@@ -1,0 +1,5 @@
+# 衡策插件 · 自足挂载单（--config 直挂；相对路径相对本文件解析）。
+# 用法示例（在 dsh 可用环境）：
+#   dsh --profile 某档 --config file:///D:/AppProject/衡策源码/plugin/cordis.yml
+- id: hengce
+  name: './index.ts'

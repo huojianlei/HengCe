@@ -1,0 +1,8 @@
+# 冒烟专用 overlay：挂插件 + 关会话压缩（拿明文日志验证 persona/工具进请求）
+- id: session-persistence-jsonl
+  config:
+    root: 'D:/AppProject/dsh-plain/sessions'
+    compression: 'none'
+- insert:
+    - id: fin-agent
+      name: 'file:///D:/AppProject/plugins/fin-agent/index.ts'

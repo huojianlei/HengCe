@@ -1,0 +1,370 @@
+{
+  "version": "1.1.1",
+  "root": "d:\\AppProject\\开发分支_1.1.1",
+  "generated": "2026-10-18",
+  "entry_points": [
+    {
+      "name": "导入",
+      "module": "excel_ingest_v11",
+      "func": "import_excel_v11",
+      "sig": "(data: bytes, name: str) -> dict",
+      "returns": [
+        "ok",
+        "contract_version",
+        "category",
+        "metadata",
+        "checks",
+        "records",
+        "ruku_shu",
+        "subjects",
+        "groupKey",
+        "text",
+        "three",
+        "shuijin",
+        "tanxiao",
+        "fenlu",
+        "sheets"
+      ],
+      "raises": "xlsx_reader.ExcelError"
+    },
+    {
+      "name": "分析",
+      "module": "yinqing",
+      "func": "fenxi",
+      "sig": "(shuru: dict, xiuding_lie: list | None = None) -> dict",
+      "returns": [
+        "blocks",
+        "bsc",
+        "config",
+        "correction",
+        "dashboard",
+        "decisions",
+        "factors",
+        "kpi",
+        "meta",
+        "moduleSummary",
+        "records",
+        "revisions",
+        "rolling",
+        "schemaVersion",
+        "splits",
+        "subjects",
+        "trace",
+        "variance",
+        "warnings"
+      ],
+      "raises": "yinqing.YinqingCuowu"
+    },
+    {
+      "name": "报告",
+      "module": "baogao_liuxian",
+      "func": "compute_report_pipeline",
+      "sig": "(jieguo, wencai_hanshu=None, zongjie_hanshu=None, jiansuo_hanshu=None, shuchu_mu=None) -> {md, html, mokuai_shu, tiaoli_shu}",
+      "returns": [
+        "md",
+        "html",
+        "mokuai_shu",
+        "tiaoli_shu"
+      ],
+      "raises": null
+    },
+    {
+      "name": "联调 CLI",
+      "script": "跑衡策全流程.py",
+      "args": [
+        "--xlsx",
+        "--out",
+        "--no-pdf"
+      ],
+      "returns": "计算报告-月度.pdf",
+      "raises": null
+    }
+  ],
+  "package_p0": [
+    {
+      "path": "跑衡策全流程.py",
+      "bytes": 8470,
+      "role": "三段串联 CLI（联调/自检）",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\shengcheng.py",
+      "bytes": 3677,
+      "role": "四册生成入口",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\shuju.py",
+      "bytes": 59996,
+      "role": "核心数值模型（三表/九表/分录/试算）",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\banshi.py",
+      "bytes": 347201,
+      "role": "版式常量（生成物）",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\xiechu.py",
+      "bytes": 10487,
+      "role": "工作簿写出器（零公式纯数值）",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\mingcheng.py",
+      "bytes": 3218,
+      "role": "名称替换 + 禁词自检",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\waibu.py",
+      "bytes": 4489,
+      "role": "外部两册（行业对标/经营变更）",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\banmian.py",
+      "bytes": 1927,
+      "role": "分录/摊销格位平移",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\heimingdan.py",
+      "bytes": 15017,
+      "role": "数值黑名单",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\jiaoyan.py",
+      "bytes": 23883,
+      "role": "44 项自检器",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\_sheng_banshi.py",
+      "bytes": 12011,
+      "role": "版式常量重建（改版式时用）",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\全流程报告.py",
+      "bytes": 19765,
+      "role": "演示件全流程报告（可选）",
+      "include": true
+    },
+    {
+      "path": "演示生成器v2\\_shisuan.py",
+      "bytes": 5062,
+      "role": "试算平衡体检（可选）",
+      "include": true
+    },
+    {
+      "path": "ingest_v11\\excel_ingest_v11.py",
+      "bytes": 44036,
+      "role": "输入端口总入口（三轨道分派）",
+      "include": true
+    },
+    {
+      "path": "ingest_v11\\excel_ingest_v2.py",
+      "bytes": 26887,
+      "role": "v2 轨道（9 表校验 + 八字段入库）",
+      "include": true
+    },
+    {
+      "path": "ingest_v11\\excel_contract_v11.py",
+      "bytes": 6606,
+      "role": "老契约常量",
+      "include": true
+    },
+    {
+      "path": "ingest_v11\\external_templates_v12.py",
+      "bytes": 13560,
+      "role": "外部两册导入",
+      "include": true
+    },
+    {
+      "path": "ingest_v11\\gongneng_qu.py",
+      "bytes": 25687,
+      "role": "功能区布局（v1 校验）",
+      "include": true
+    },
+    {
+      "path": "ingest_v11\\jian_qiyue_v11.py",
+      "bytes": 22793,
+      "role": "契约 JSON + 骨架构建",
+      "include": true
+    },
+    {
+      "path": "ingest_v11\\xlsx_xieqi_v11.py",
+      "bytes": 13844,
+      "role": "骨架写出",
+      "include": true
+    },
+    {
+      "path": "houtai_hexin_python\\yinqing.py",
+      "bytes": 54000,
+      "role": "十五步分析 fenxi()",
+      "include": true
+    },
+    {
+      "path": "houtai_hexin_python\\ai_bianjie.py",
+      "bytes": 10508,
+      "role": "AI 边界规则",
+      "include": true
+    },
+    {
+      "path": "houtai_hexin_python\\houtai_hexin.py",
+      "bytes": 3799,
+      "role": "科目归属 analyze_subjects",
+      "include": true
+    },
+    {
+      "path": "报告组装\\baogao_liuxian.py",
+      "bytes": 20296,
+      "role": "报告流水线 compute_report_pipeline()",
+      "include": true
+    }
+  ],
+  "package_p0_dirs": [
+    {
+      "path": "ingest_v11\\模板",
+      "role": "契约 JSON + 骨架底稿（v1 链必需）",
+      "bytes": 4672040,
+      "include": true
+    }
+  ],
+  "exclude": [
+    "_backup/",
+    "__pycache__/",
+    "演示生成器/",
+    "演示生成器v2/_kan_*.py",
+    "演示生成器v2/_zhaiyao.py",
+    "演示生成器v2/_tiqu_banshi.py",
+    "ingest_v11/tests/",
+    "houtai_hexin_python/tests/",
+    "演示生成器v2/输出/",
+    "报告组装/输出/"
+  ],
+  "vendor": {
+    "note": "1.1.1 无 algo/kb2 树，运行时只读 1.0.5；打包前复制到 _vendor 并改 sys.path",
+    "algo_dir": "D:\\AppProject\\开发分支_1.0.5\\algo",
+    "algo_files": [
+      {
+        "path": "data_ingest.py",
+        "bytes": 17780
+      },
+      {
+        "path": "xlsx_reader.py",
+        "bytes": 7212
+      },
+      {
+        "path": "excel_contract.py",
+        "bytes": 2898
+      },
+      {
+        "path": "rolling_budget.py",
+        "bytes": 19347
+      },
+      {
+        "path": "variance.py",
+        "bytes": 22290
+      },
+      {
+        "path": "building_blocks.py",
+        "bytes": 20745
+      },
+      {
+        "path": "bsc.py",
+        "bytes": 11957
+      },
+      {
+        "path": "kpi.py",
+        "bytes": 18008
+      },
+      {
+        "path": "kanban.py",
+        "bytes": 15838
+      },
+      {
+        "path": "loop_decision.py",
+        "bytes": 23297
+      },
+      {
+        "path": "planning_operational.py",
+        "bytes": 14057
+      },
+      {
+        "path": "report_parse.py",
+        "bytes": 20469
+      },
+      {
+        "path": "suyuan.py",
+        "bytes": 14970
+      },
+      {
+        "path": "xishu.py",
+        "bytes": 13890
+      },
+      {
+        "path": "zhenggai.py",
+        "bytes": 14990
+      },
+      {
+        "path": "zuzhi.py",
+        "bytes": 11009
+      },
+      {
+        "path": "baogao.py",
+        "bytes": 42176
+      }
+    ],
+    "kb2_dir": "D:\\AppProject\\开发分支_1.0.5\\kb2",
+    "kb2_files": [
+      {
+        "path": "query_kb2.py",
+        "bytes": 10783
+      },
+      {
+        "path": "build_kb2.py",
+        "bytes": 26683
+      },
+      {
+        "path": "guanli_ku.sqlite",
+        "bytes": 4939776
+      },
+      {
+        "path": "duan_yema.json",
+        "bytes": 316700
+      }
+    ],
+    "third_party": [
+      "openpyxl",
+      "numpy",
+      "onnxruntime"
+    ],
+    "opt": [
+      "onnx（缺则条例检索降级为占位文案）"
+    ]
+  },
+  "hardcoded_paths_to_fix": [
+    "ingest_v11/excel_ingest_v11.py",
+    "ingest_v11/excel_ingest_v2.py",
+    "houtai_hexin_python/yinqing.py",
+    "报告组装/baogao_liuxian.py"
+  ],
+  "self_check": [
+    {
+      "cmd": "演示生成器v2: python -B jiaoyan.py",
+      "expect": "通过 44 项，失败 0 项"
+    },
+    {
+      "cmd": "ingest_v11: python -B -m unittest discover -s tests -t .",
+      "expect": "21 tests OK"
+    },
+    {
+      "cmd": "root: python -B 跑衡策全流程.py",
+      "expect": "计算报告-月度.pdf（约 18 页）"
+    }
+  ]
+}

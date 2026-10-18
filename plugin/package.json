@@ -1,0 +1,15 @@
+{
+  "name": "@hengce/hengce-dsh-plugin",
+  "version": "1.1.1",
+  "private": true,
+  "type": "module",
+  "description": "衡策财务智能体 dsh 插件：四类固定 Excel 模板进 → 契约校验 → 十五步分析 → 计算报告（md/html/PDF）→ 液态玻璃工作台。后端为 1.1.1 Python 权威三函数（backend/，_vendor 自足），界面为原生 ESM 前端（ui/），桥接为 stdio JSON 行协议（adapter/）。",
+  "engines": {
+    "node": ">=22"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./hengce.patch.yml"
+    }
+  }
+}

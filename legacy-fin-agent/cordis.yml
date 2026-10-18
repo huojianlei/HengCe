@@ -1,0 +1,7 @@
+# FinAgent 插件自足挂载单（baseUrl = 本文件所在目录）
+# 用法（在 D:\AppProject\harness 下）：
+#   node --import tsx apps/cli/src/bin.ts --config D:/AppProject/plugins/fin-agent/cordis.yml
+# 相对路径 './index.ts' 相对本文件解析（Include 把 baseUrl 设为配置文件目录）。
+- insert:
+    - id: fin-agent
+      name: './index.ts'

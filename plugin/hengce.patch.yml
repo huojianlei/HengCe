@@ -1,0 +1,7 @@
+# 衡策插件 · --patch overlay 挂载单（追加到任何 profile 之上）。
+# Windows 盘符必须写 file:///D:/... 三斜杠形式（overlay 不经自身 Include，
+# 相对路径会解析到 profile 目录，所以这里必须用绝对 URL）。
+# 挂载方法见同目录《挂载说明.md》。
+- insert:
+    - id: hengce
+      name: 'file:///D:/AppProject/衡策源码/plugin/index.ts'

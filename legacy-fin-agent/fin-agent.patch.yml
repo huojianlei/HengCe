@@ -1,0 +1,8 @@
+# FinAgent 插件 --patch overlay（绝对路径版，挂在任何 profile 之上）
+# 用法（在 D:\AppProject\harness 下）：
+#   node --import tsx apps/cli/src/bin.ts --patch file:///D:/AppProject/plugins/fin-agent/fin-agent.patch.yml
+# 注意：--patch overlay 不经过自己的 Include，相对路径会解析到 profile 目录，
+# 所以这里必须用 file:/// 绝对 URL（Windows 盘符写法 file:///D:/...）。
+- insert:
+    - id: fin-agent
+      name: 'file:///D:/AppProject/plugins/fin-agent/index.ts'
