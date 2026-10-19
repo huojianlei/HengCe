@@ -19,6 +19,7 @@
 import base64          # 文件字节 ↔ JSON 字符串
 import dataclasses     # fenxi 结果里的 dataclass 摊平
 import json            # 行协议与状态读写
+import os              # 环境变量（AI 密钥 / DSH_HOME）
 import re              # PDF 页数统计
 import subprocess      # 报告 PDF 打印 + 打开目录
 import sys             # stdio 重配置与路径引导
@@ -416,7 +417,8 @@ def pao_fenxi(zt, ui_cfg=None):
     md_shi = shi.get('metadata', {})
     pei = zuhe_peizhi(ui_cfg or zt.get('config'))
     if not pei.get('period'):
-        # 期间缺省口径与 zao_zaihe 一致：实时经营「已结账截至」→ 预算「生效周期」
+        # 期间缺省口径与 zao_zaihe 一致：实时经营「已结账截至」→ 预算「生效周期」；
+        # 月度取前 7 位（YYYY-MM），季度由 UI 传入（YYYY-Qn）
         zhou = md_shi.get('已结账截至') or md_yu.get('生效周期') or ''
         if pei.get('cycle') == '月度' and len(zhou) > 7:
             zhou = zhou[:7]
@@ -587,8 +589,8 @@ def _(zt, payload):
 
 @dongzuo('analysis.run')
 def _(zt, payload):
-    """十五步分析（配置来自 UI；成功登记运行与历史快照）。"""
-    _, jieguo = pao_fenxi(zt, (payload or {}).get('config'))
+    """十五步分析（配置来自 UI；未带配置时用默认档位，杜绝空档位拒绝）。"""
+    _, jieguo = pao_fenxi(zt, (payload or {}).get('config') or moren_config())
     kuai = guiyi(jieguo, zt)
     baocun_kuaizhao(zt, kuai)
     return kuai
@@ -650,6 +652,169 @@ def _(zt, payload):
     return kuai
 
 
+# ======================================================================
+# AI 文案（DeepSeek 官方 API）。密钥纪律：只从环境变量或 dsh 凭据服务
+# 读取，源码/示例/测试零密钥字面量；调用失败如实抛错，不用占位冒充。
+# SSRF 边界（固端请求）：目标域名写死于本模块，不接收调用方 URL；
+# 用 http.client 直连（不跟随重定向）；TLS 默认上下文校验域名证书；
+# 握手后核对实际对端 IP 必须为公网地址（阻断私网/环回/链路本地与
+# DNS rebinding 指向内网的情形）。
+# ======================================================================
+
+import http.client
+import ipaddress
+import socket
+import ssl
+import urllib.error
+
+AI_ZHUJI = 'api.deepseek.com'
+AI_DIZHI = f'https://{AI_ZHUJI}/chat/completions'
+_AI_MOXING_HUANCUN = []
+
+
+def _du_miyao():
+    """密钥两级：环境变量 DEEPSEEK_API_KEY → 凭据文件 refs 节（只读）。"""
+    huan = os.environ.get('DEEPSEEK_API_KEY', '').strip()
+    if huan:
+        return huan
+    jia = os.environ.get('DSH_HOME')
+    if jia:
+        wen = Path(jia) / '.credentials.yaml'
+        if wen.exists():
+            for hang in wen.read_text(encoding='utf-8').splitlines():
+                m = re.match(r'^\s*DEEPSEEK_API_KEY:\s*(\S+)\s*$', hang)
+                if m:
+                    return m.group(1)
+    return None
+
+
+def _qing_ai(ti, miyao):
+    """固端 HTTPS 请求（http.client 直连，无重定向跟随）。"""
+    lian = http.client.HTTPSConnection(
+        AI_ZHUJI, 443, context=ssl.create_default_context(), timeout=180)
+    lian.connect()
+    dui_duan = lian.sock.getpeername()[0]        # 实际连接 IP（握手后）
+    if not ipaddress.ip_address(dui_duan).is_global:
+        lian.close()
+        raise RuntimeError(f'AI 端点解析到非公网地址 {dui_duan}，拒绝请求')
+    lian.request('POST', '/chat/completions', body=ti, headers={
+        'Host': AI_ZHUJI,
+        'Authorization': 'Bearer ' + miyao,
+        'Content-Type': 'application/json'})
+    xiang = lian.getresponse()
+    ma, ti = xiang.status, xiang.read()
+    lian.close()
+    return ma, ti
+
+
+def _wen_ai(tishi, miyao, juese='', zui_da=4096):
+    """单次文案调用。模型取环境 HENGCE_AI_MODEL，默认依次试官方别名与
+    v4-flash（推理模型 content/reasoning_content 分离，只取 content）；
+    zui_da 为输出上限（批量清单类调用可放大）。"""
+    moxing_lie = _AI_MOXING_HUANCUN or [
+        os.environ.get('HENGCE_AI_MODEL', ''),
+        'deepseek-chat', 'deepseek-v4-flash']
+    zui_hou = None
+    for moxing in [m for m in moxing_lie if m]:
+        ti = json.dumps({
+            'model': moxing,
+            'messages': [
+                {'role': 'system', 'content':
+                 '你是管理会计经营分析师。铁律：只使用用户材料中的数字，'
+                 '禁止编造或推算新材料之外的数字；用简体中文，语气克制'
+                 '专业，直接输出正文，不要寒暄与复述结构。' + juese},
+                {'role': 'user', 'content': tishi}],
+            'temperature': 0.3, 'max_tokens': zui_da,
+        }).encode('utf-8')
+        try:
+            ma, hui_ti = _qing_ai(ti, miyao)
+        except urllib.error.HTTPError as e:
+            zui_hou = f'HTTP {e.code}'
+            if e.code in (400, 404):            # 模型名不识别 → 试下一个
+                continue
+            raise RuntimeError(f'AI 调用失败（{moxing}）：{zui_hou}')
+        if ma in (400, 404):
+            zui_hou = f'HTTP {ma}：{hui_ti[:160].decode("utf-8", "replace")}'
+            continue                            # 模型名不识别 → 试下一个
+        if ma != 200:
+            raise RuntimeError(f'AI 调用失败（{moxing}）：HTTP {ma} '
+                               f'{hui_ti[:160].decode("utf-8", "replace")}')
+        hui = json.loads(hui_ti.decode('utf-8'))
+        wen = (hui['choices'][0]['message'].get('content') or '').strip()
+        if not wen:
+            raise RuntimeError(f'AI 返回空文案（{moxing}）')
+        if not _AI_MOXING_HUANCUN:
+            _AI_MOXING_HUANCUN.append(moxing)   # 首个可用模型缓存给后续调用
+        return wen
+    raise RuntimeError(f'AI 调用失败（无可用模型）：{zui_hou or "未配置模型"}')
+
+
+def _ai_bao_wencai(miyao):
+    """构造报告流水线的两个文案钩子（模块解读 / 总体解读）。"""
+    def wencai(zhanshi, shuju_kuai):
+        tishi = (f'本期「{zhanshi}」模块的数据表如下（预算 vs 实际；金额单位为分，'
+                 f'比率单位为基点）。\n---\n{shuju_kuai}\n---\n'
+                 '写一段 3-5 句的经营解读：整体表现如何、最值得注意的一到两项差异'
+                 '（必须引用表中数字）、给管理者的一个行动方向。')
+        return _wen_ai(tishi, miyao)
+
+    def zongjie(jieguo):
+        bao = jieguo['factors']
+        meta = jieguo['meta']
+        tishi = (f'主体 {meta["company"]}，期间 {meta["period"]}。整体判定包：'
+                 f'完成率 {bao.wanchenglv_bps} 基点；预警分布 红 {bao.hong_shu} / '
+                 f'黄 {bao.huang_shu} / 无 {bao.wu_shu}；单双环结论 {bao.panduan_jielun}'
+                 f'（需审批{"是" if bao.shenpi else "否"}）；核心问题模块 {bao.hexin_mokuai}；'
+                 f'BSC 总分 {bao.bsc_zongfen}（{bao.bsc_dengji or "未评级"}）；'
+                 f'整改优先级 高 {bao.zhenggai_gao_shu} / 中 {bao.zhenggai_zhong_shu}。\n'
+                 '写总体解读：先用 2-3 句概括本期经营全貌，再给管理层建议优先处理的'
+                 '三件事（每件事一句并点出对应数字）。共 150-300 字。')
+        return _wen_ai(tishi, miyao)
+    return wencai, zongjie
+
+
+def _ai_zhenggai(run, miyao, md_lu):
+    """整改建议批量回填：一次调用生成全部条目建议，逐条替换（占位）行。
+    解析不到的条目保持占位（诚实边界：宁可占位不冒充）。"""
+    from baogao_liuxian import zhuan_html
+    # correction 在引擎原始结果里是对象（zucheng_md 用属性访问），兼容两种形态
+    jiao = run.get('correction') if isinstance(run, dict) else None
+    if jiao is None:
+        return False
+    if isinstance(jiao, dict):
+        qing = jiao.get('qingdan') or []
+    else:
+        qing = getattr(jiao, 'qingdan', None) or []
+    tiao_mu = list(qing)
+    if not tiao_mu:
+        return False
+    lie_biao = '\n'.join(f'{xu}. [{t.leixing}｜{t.zeren_mokuai}] {t.miaoshu}'
+                         for xu, t in enumerate(tiao_mu, start=1))
+    hui = _wen_ai(f'本期整改清单：\n{lie_biao}\n---\n'
+                  '对每一条给出一句具体的处理建议（可点数字），按编号输出，'
+                  '一行一条，格式严格为：编号. 建议（纯文本，不要加粗、'
+                  '列表符号或代码块），不要多余内容。',
+                  miyao, juese='每条一句，共输出与清单相同的条数。', zui_da=8192)
+    jian_yi = {}
+    for hang in hui.splitlines():
+        # 容忍模型加的 markdown 修饰（**、-、>、[] 等）再取编号
+        m = re.match(r'^[\s\-\*#>\[\|]*(?:\**)?\s*(\d{1,3})\s*\]*[\].、:：)]\s*(.+?)\s*\**\s*$', hang.strip())
+        if m:
+            jian_yi[int(m.group(1))] = m.group(2).strip()
+    lu = Path(md_lu)
+    wen = lu.read_text(encoding='utf-8')
+    for xu, t in enumerate(tiao_mu, start=1):
+        yuan = (f'**{xu}. [{t.leixing}｜{t.zeren_mokuai}]（占位）** '
+                f'{t.miaoshu}——待 DSH 宿主 agent 回填。')
+        if yuan in wen and jian_yi.get(xu):
+            wen = wen.replace(yuan, f'**{xu}. [{t.leixing}｜{t.zeren_mokuai}]** '
+                              f'{t.miaoshu}\n\n建议：{jian_yi[xu]}')
+    lu.write_text(wen, encoding='utf-8')
+    Path(str(md_lu).replace('.md', '.html')).write_text(
+        zhuan_html(wen), encoding='utf-8')
+    return True
+
+
 @dongzuo('reports.generate')
 def _(zt, payload):
     """对指定运行组装计算报告（md+html）并打印 PDF。"""
@@ -661,24 +826,45 @@ def _(zt, payload):
         raise RuntimeError('该运行的原始结果已不在本进程（重启或更早的运行）：'
                            '请重新运行分析后再生成报告')
     run = next((r for r in zt['runs'] if r['id'] == rid), None)
+    # ---- AI 解读（includeAI）：真实模型调用逐节回填；未配密钥如实报错 ----
+    yao_ai = bool((payload or {}).get('includeAI'))
+    wencai_hanshu = zongjie_hanshu = None
+    if yao_ai:
+        miyao = _du_miyao()
+        if not miyao:
+            raise RuntimeError('未配置 DeepSeek API 密钥：请先在 分析设置 → '
+                               'AI 服务 保存密钥，或以 DEEPSEEK_API_KEY 环境'
+                               '变量提供；不选"加入 AI 经营解读"仍可生成纯计算报告')
+        print('[hengce] AI 解读启用：逐模块调用 DeepSeek（约 3-8 分钟）…',
+              file=sys.stderr, flush=True)
+        wencai_hanshu, zongjie_hanshu = _ai_bao_wencai(miyao)
     BAOGAO_MU.mkdir(parents=True, exist_ok=True)
-    bao = compute_report_pipeline(_RUNS[rid], shuchu_mu=str(BAOGAO_MU))
+    bao = compute_report_pipeline(_RUNS[rid], wencai_hanshu=wencai_hanshu,
+                                  zongjie_hanshu=zongjie_hanshu,
+                                  shuchu_mu=str(BAOGAO_MU))
     bao_id = f'report-{datetime.now().strftime("%Y%m%d-%H%M%S")}-{len(zt["reports"]) + 1}'
     # 流水线输出固定文件名（幂等设计）；复制成按报告 id 命名的存档，历史互不覆盖
     cun_md = BAOGAO_MU / f'{bao_id}.md'
     cun_html = BAOGAO_MU / f'{bao_id}.html'
     cun_md.write_bytes(Path(bao['md']).read_bytes())
     cun_html.write_bytes(Path(bao['html']).read_bytes())
+    if yao_ai:
+        try:                                    # 整改建议批量回填（md+html 重写）
+            _ai_zhenggai(_RUNS[rid], miyao, str(cun_md))
+        except Exception as e:                  # noqa: BLE001 建议失败不毁报告
+            print(f'[hengce] 整改建议 AI 回填失败（保留占位）：{e}',
+                  file=sys.stderr, flush=True)
     pdf_linshi = Path(bao['html']).with_suffix('.pdf')
     you_pdf = zhuan_pdf(str(cun_html), str(BAOGAO_MU / f'{bao_id}.pdf'))
     cun_pdf = BAOGAO_MU / f'{bao_id}.pdf'
     zt['reports'].insert(0, {
         'id': bao_id,
-        'title': f'{(run or {}).get("period", "")} 计算报告',
+        'title': f'{(run or {}).get("period", "")} 计算报告'
+                 + ('（含AI解读）' if yao_ai else ''),
         'period': (run or {}).get('period', ''), 'createdAt': xianzai(),
         'status': 'ready', 'format': 'PDF',
         'pages': shu_yeshu(cun_pdf) if you_pdf else None,
-        'includeAI': False,            # 诚实口径：AI 解读为占位文案，由宿主回填
+        'includeAI': yao_ai,           # True=模型逐节回填；False=纯计算+占位标注
         'mdPath': str(cun_md), 'htmlPath': str(cun_html),
         'pdfPath': str(cun_pdf) if you_pdf else None,
     })
@@ -741,6 +927,77 @@ def _(zt, payload):
     raise RuntimeError('衡策助手在插件版由 DeepSeek Harness 宿主对话承担：'
                        '请回到主对话窗口提问；插件侧可用 hengce_import / '
                        'hengce_analyze / hengce_report 工具驱动同一条链路')
+
+
+@dongzuo('hosting.apiKey')
+def _(zt, payload):
+    """AI 密钥：不带 key=查状态；带 key=写入/清除 dsh 官方凭据（热生效）。
+
+    凭据文件 <DSH_HOME>/.credentials.yaml 的 refs 节是 dsh 官方机制
+    （存储文件优先级最高，watch 自动热载，无需重启）。处理方式为"分节
+    重建"：只动 version/refs 两节，refs 节里只动 DEEPSEEK_API_KEY 一行，
+    records 节（账号登录态等）逐字保留。零 C 盘纪律：DSH_HOME 未设时
+    拒绝写入（避免落到 C 盘默认家目录）。
+    """
+    import os
+    jia = Path(os.environ['DSH_HOME']) if os.environ.get('DSH_HOME') else None
+    wen = jia / '.credentials.yaml' if jia else None
+    MIYAO_HANG = re.compile(r'^\s*DEEPSEEK_API_KEY:\s*(\S+)\s*$')
+
+    def chai_hang(yuan):
+        """按顶层键把文件拆成 [标题行, [子行...]] 的节列表（其余原样）。"""
+        jie = []
+        for hang in yuan.splitlines():
+            if hang and not hang[0].isspace() and re.match(r'^[A-Za-z_][\w-]*:', hang):
+                jie.append([hang, []])
+            elif jie:
+                jie[-1][1].append(hang)
+        return jie
+
+    def cha():
+        """当前密钥状态：文件优先，其次启动环境变量；只回掩码不回原文。"""
+        if wen and wen.exists():
+            for hang in wen.read_text(encoding='utf-8').splitlines():
+                m = MIYAO_HANG.match(hang)
+                if m:
+                    k = m.group(1)
+                    return {'configured': True, 'source': 'file',
+                            'masked': f'{k[:3]}***{k[-4:]}'}
+        huan = os.environ.get('DEEPSEEK_API_KEY', '')
+        if huan:
+            return {'configured': True, 'source': 'env',
+                    'masked': f'{huan[:3]}***{huan[-4:]}'}
+        return {'configured': False, 'source': '', 'masked': ''}
+
+    b = payload or {}
+    if 'key' not in b:
+        return cha()                                  # 查询：不动文件
+    if wen is None:
+        raise RuntimeError('未检测到 DSH_HOME（独立服务模式不落盘）：'
+                           '请从衡策启动器或 dsh 客户端内使用本功能')
+    xin = str(b.get('key') or '').strip()
+    if xin and (len(xin) < 8 or re.search(r'\s', xin)):
+        raise RuntimeError('密钥格式不对：应为 sk- 开头的连续字符串')
+
+    yuan = wen.read_text(encoding='utf-8') if wen.exists() else 'version: 1\n'
+    jie = chai_hang(yuan)
+    ban = next((j for j in jie if j[0].startswith('version:')), None)
+    tou = ban[0] if ban else 'version: 1'
+    # refs 节里除本密钥外的其他子键原样保留（未来官方扩展不丢）
+    refs_yu = [h for j in jie if j[0].startswith('refs:')
+               for h in j[1] if h.strip() and not MIYAO_HANG.match(h)]
+    qita = [h for j in jie
+            if not j[0].startswith(('version:', 'refs:'))
+            for h in [j[0]] + j[1]]
+
+    xin_hang = ([tou, 'refs:'] + refs_yu
+                + ([f'  DEEPSEEK_API_KEY: {xin}'] if xin else [])) \
+        if (xin or refs_yu) else [tou]
+    jia.mkdir(parents=True, exist_ok=True)
+    linshi = wen.with_suffix('.tmp')
+    linshi.write_text('\n'.join(xin_hang + qita) + '\n', encoding='utf-8')
+    linshi.replace(wen)                               # 原子替换，watch 即刻热载
+    return cha()
 
 
 # ======================================================================
