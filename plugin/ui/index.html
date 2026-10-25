@@ -1,21 +1,38 @@
+<!-- 衡策「液态玻璃」工作台的唯一 HTML 入口：只保留壳层挂载点，页面内容全部由 src/主界面.mjs 在客户端生成。 -->
+<!-- 这样宿主（桌面插件或内嵌窗口）加载的永远是最新逻辑，界面不必随版本重新发一套静态页。 -->
 <!doctype html>
+<!-- lang 固定 zh-CN：读屏与浏览器翻译按中文断句，金额/日期也走中文格式（toLocaleString('zh-CN')）。 -->
 <html lang="zh-CN">
 <head>
+<!-- 必须最先声明编码：中文科目名与金额符号依赖 UTF-8，缺失会被按 GBK 猜错导致乱码。 -->
   <meta charset="utf-8">
+<!-- 视口声明：内嵌窗口与窄屏都要按设备宽度布局，配合 CSS 的 760/1020/1250/1650 断点使用。 -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 只声明浅色方案：报表与打印视图以白底为准，避免系统深色模式把表格底纹反转导致数字看不清。 -->
   <meta name="color-scheme" content="light">
+<!-- 主题色与 --bg/--pane 同一系（#edf2f9），窗口边框与首屏加载背景不会出现色差闪动。 -->
   <meta name="theme-color" content="#edf2f9">
+<!-- 标题同时是窗口标题与浏览器任务名，中文书名点「·」区分品牌与功能。 -->
   <title>衡策 · 经营分析工作台</title>
+<!-- 站点图标用本地 SVG，不引外链：桌面离线运行时不能依赖网络资源。 -->
   <link rel="icon" href="./标识.svg" type="image/svg+xml">
+<!-- 样式加载顺序即层叠顺序，先布局与组件（界面.css），再液态玻璃质感（玻璃主题.css），最后下拉菜单（下拉菜单.css）。 -->
   <link rel="stylesheet" href="./src/界面.css">
+<!-- 玻璃层叠与模糊只覆盖颜色、阴影、边框等表象，不改尺寸与栅格，所以放在界面.css 之后即可生效。 -->
   <link rel="stylesheet" href="./src/玻璃主题.css">
+<!-- 下拉菜单样式独立成文件：原生 select 被增强成 popover 列表后，需要与基础表单控件解耦维护。 -->
   <link rel="stylesheet" href="./src/下拉菜单.css">
 </head>
 <body>
+<!-- 无障碍第一站：键盘用户按 Tab 的首个焦点就是「跳转到主要内容」，跳过侧栏 6 个导航项直达 #main。 -->
   <a class="skip-link" href="#main">跳转到主要内容</a>
+<!-- #app 是整页唯一的挂载容器；.boot 是首帧占位，等 主界面.mjs 首次 render() 时被整体替换，避免白屏。 -->
   <div id="app"><div class="boot">正在打开衡策工作台…</div></div>
+<!-- #overlay 是弹窗层容器：分析设置、导入、报告预览等对话框都由 modal() 动态写入这里并托管焦点。 -->
   <div id="overlay"></div>
+<!-- 轻提示区域：role="status" + aria-live="polite" 让操作结果（已保存/导入成功）被读屏播报，且不打断当前朗读。 -->
   <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+<!-- 入口脚本用 type="module"（原生 ESM，无打包器）：import 关系即依赖关系，宿主也按 ESM 直读加载。 -->
   <script type="module" src="./src/主界面.mjs"></script>
 </body>
 </html>

@@ -1,168 +1,332 @@
+/* 设计 token 总表：颜色、玻璃透明度、阴影、缓动、圆角、滚动条六组收敛在这里。 */
+/* 分层的依据是「离用户有多近」——外壳最透、面板半透、弹窗最实，保证数字始终可读。 */
+/* 所有透明度都带小数，改动时只需调这一处，全站材质同步变化。 */
 /* 衡策 · 玻璃工作台。材质、圆角、光线与非线性反馈使用同一组设计变量。 */
 :root {
+/* 页面底色：极浅的冷蓝，让半透明白玻璃叠上去之后仍有冷暖对比。 */
   --bg: #edf2f9;
+/* 通用实心表面：卡片内部、输入框等不需要再透背景的地方用它。 */
   --surface: rgba(255, 255, 255, .8);
+/* 主文字色：深蓝灰而不是纯黑，长时间阅读核对数字时对比更柔和。 */
   --ink: #233550;
+/* 次要文字色：单位、说明、时间戳等辅助信息，也是 AI 标注小字用色。 */
   --muted: #72839c;
+/* 分隔线：带透明度的蓝灰，叠在玻璃上不会形成生硬的实线。 */
   --line: rgba(106, 133, 171, .14);
+/* 品牌主色：主按钮、选中态、关键数字的强调色。 */
   --blue: #3168e9;
+/* 主色的浅底版本：用于选中背景，保证白字或深字都能压住。 */
   --blue-soft: rgba(224, 235, 255, .7);
+/* 外壳玻璃：侧栏、顶栏用，透明度最高，让背景光斑透出来。 */
   --glass-shell: rgba(255, 255, 255, .56);
+/* 面板玻璃：业务卡片用，比外壳实，保证表格与数字的对比度。 */
   --glass-panel: rgba(255, 255, 255, .72);
+/* 浮层玻璃：弹窗与报告预览用，接近不透明，长文本阅读不累眼。 */
   --glass-overlay: rgba(255, 255, 255, .88);
+/* 玻璃边缘高光：1px 的白色描边，是「玻璃有厚度」的主要来源。 */
   --glass-edge: rgba(255, 255, 255, .88);
+/* 玻璃投影：外层是偏蓝的大扩散阴影（悬浮感），内层是顶部 1px 白色内阴影（受光面）。 */
+/* 负的扩散半径让阴影更集中，避免整块面板发灰。 */
   --glass-shadow: 0 8px 32px -16px rgba(44, 72, 126, .16), inset 0 1px 0 rgba(255, 255, 255, .94);
+/* 液体缓动：起步极快、收尾极缓，用于颜色、背景、阴影这类「材质变化」。 */
   --ease-liquid: cubic-bezier(.16, 1, .3, 1);
+/* 弹簧缓动：控制点超过 1，产生轻微过冲，用于位移与缩放（按钮抬起、图标位移）。 */
   --ease-spring: cubic-bezier(.22, 1.35, .36, 1);
+/* 沉降缓动：不过冲的顺滑曲线，用于抽屉滑入这类需要「稳稳停下」的动作。 */
   --ease-settle: cubic-bezier(.22, 1, .36, 1);
+/* 外壳圆角：侧栏整体轮廓。 */
   --radius-shell: 24px;
+/* 面板圆角：比外壳略小，形成由外到内逐级收紧的节奏。 */
   --radius-panel: 20px;
+/* 控件圆角：按钮、输入框统一用它，避免每个控件各写一个值。 */
   --radius-control: 12px;
+/* 滚动条滑块常态：半透明蓝灰，不抢视觉。 */
+  --scroll-thumb: rgba(125, 148, 181, .48);
+/* 悬停加深：提示「这里可以拖」。 */
+  --scroll-thumb-hover: rgba(100, 128, 168, .72);
+/* 拖动中变成实色：拖动时需要最强的位置反馈。 */
+  --scroll-thumb-active: #6480a8;
 }
 
+/* 根元素铺底色：body 的半透明光斑必须叠在确定的底色上，否则系统深色模式下会出现脏色。 */
+/* 根元素单独铺底色而不是交给 body：body 上的半透明光斑需要一层确定的实色打底，否则系统深色模式下会透出脏色。 */
 html { background: var(--bg); }
+/* 页面、表格与浮层共用轻量滚动条，保留清楚可拖动的滑块。 */
+:is(html, body, .sidebar, .table-scroll, .assistant-log, .dialog-body, .glass-select-menu, textarea, .report-paper table) {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+/* 能力探测：支持 webkit 私有滚动条伪元素的浏览器改用完全自定义样式（Firefox 不支持，退回标准属性）。 */
+/* 用 @supports 探测而不是 UA 判断：支持 webkit 伪元素的浏览器走完全自定义滚动条，其余退回标准属性。 */
+@supports selector(::-webkit-scrollbar) {
+  :is(html, body, .sidebar, .table-scroll, .assistant-log, .dialog-body, .glass-select-menu, textarea, .report-paper table) {
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+/* 8px 细滚动条：既好点又不占内容宽度。 */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+/* 轨道透明并留 4px 边距：滑块两端不顶到容器边缘，视觉上更轻。 */
+  ::-webkit-scrollbar-track { background: transparent; margin: 4px; }
+/* 滑块用半透明色 + 全圆角，与玻璃面板同一个语言。 */
+  ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 8px; }
+/* 悬停态：加深但不改变尺寸，避免鼠标经过时表格跳动。 */
+  ::-webkit-scrollbar-thumb:hover { background: var(--scroll-thumb-hover); }
+/* 拖动态：实色，明确「正在拖动」。 */
+  ::-webkit-scrollbar-thumb:active { background: var(--scroll-thumb-active); }
+/* 横竖滚动条交汇处透明，否则会出现一块灰色小方块。 */
+  ::-webkit-scrollbar-corner { background: transparent; }
+/* 隐藏两端箭头按钮：现代界面不需要，且会占据额外空间。 */
+  ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+}
+/* 高对比度模式：滚动条改用系统色，否则半透明滑块在强制配色下几乎不可见。 */
+@media(forced-colors: active) {
+  :root { --scroll-thumb: ButtonText; --scroll-thumb-hover: Highlight; --scroll-thumb-active: Highlight; }
+}
 body {
   background:
+/* 页面背景由四个径向光斑 + 一条对角渐变组成：模拟「玻璃后面有光」，这是液态玻璃质感的来源。 */
+/* 右上角冷蓝光斑：最亮的一处，对应顶栏与报告区。 */
     radial-gradient(ellipse at 84% 3%, rgba(153, 191, 255, .28), transparent 43%),
+/* 左侧中部弱光斑：让侧栏区域不至于死平。 */
     radial-gradient(ellipse at 12% 58%, rgba(173, 202, 255, .18), transparent 40%),
+/* 右下角淡紫光斑：给整页一点冷暖变化，避免全蓝显得单调。 */
     radial-gradient(ellipse at 84% 86%, rgba(191, 181, 244, .13), transparent 44%),
+/* 对角线性渐变打底：三个近似色形成极缓慢的明暗过渡。 */
     linear-gradient(132deg, #f0f5fb, #edf1f8 60%, #f2f5fa);
+/* 固定背景：内容滚动时光斑不动，玻璃的「折射感」才成立。 */
   background-attachment: fixed;
 }
+/* 顶部第二层高光：单独用伪元素，避免和 body 的多重背景混在一起难以调参。 */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: -1;
+/* 从顶部中央射下的白光：模拟窗光，是「液态玻璃」最直观的一笔。 */
   background: radial-gradient(ellipse at 48% -12%, rgba(255,255,255,.94), transparent 65%);
 }
 
 /* 导航与工具栏是悬浮在工作区之上的玻璃层。 */
 .sidebar {
+/* 侧栏四周各留 12px：悬浮在海报背景上，不贴边，才有独立的玻璃片感觉。 */
   inset: 12px auto 12px 12px;
+/* 固定 200px：桌面端信息密度与可读性的折中，窄屏在媒体查询里逐级缩小。 */
   width: 200px;
+/* 上内边距最大：给品牌区留呼吸空间；左右 12px 让导航项与玻璃边缘保持安全距离。 */
   padding: 24px 12px 16px;
+/* 外壳玻璃只到 .56 不透明度：背景光斑必须能透出来，否则失去材质。 */
   background: var(--glass-shell);
   border: 1px solid var(--glass-edge);
+/* 整块 24px 圆角：与顶栏、助手栏同一档，形成统一的「玻璃片」轮廓。 */
   border-radius: var(--radius-shell);
+/* 外层负扩散阴影压低存在感，内层顶部白线模拟厚度受光。 */
   box-shadow: 0 12px 40px -20px rgba(49, 75, 123, .22), inset 0 1px 0 #fff;
   -webkit-backdrop-filter: blur(28px) saturate(1.45);
   backdrop-filter: blur(28px) saturate(1.45);
   isolation: isolate;
 }
+/* 品牌区：底部 28px 留白把「品牌」与「工作区切换」拉开层次。 */
+/* 品牌区下方 28px 留白：把「品牌」和「工作区切换」分成两个视觉段落。 */
 .brand { padding: 0 12px 28px; }
+/* 图标加圆角与投影：让 36px 的方形图标看起来像嵌入玻璃里的一块小玻璃。 */
 .brand img {
   width: 36px;
   height: 36px;
   border-radius: 12px;
   box-shadow: 0 5px 12px -3px rgba(49,104,233,.32), inset 0 1px 0 rgba(255,255,255,.7);
+/* 位移用弹簧曲线、阴影用液体曲线：抬起与光影变化节奏不同步，更像真实物体。 */
   transition: transform 500ms var(--ease-spring), box-shadow 400ms var(--ease-liquid);
 }
+/* 悬停微抬 2px 并逆时针转 5 度：一个很小但能让人感到「界面活着」的反馈。 */
 .brand:hover img { transform: translateY(-2px) rotate(-5deg); box-shadow: 0 8px 18px -4px rgba(49,104,233,.38); }
+/* 品牌名：22px + 2px 字距，中文字距拉开后更具标识感。 */
 .brand-name { color: #29436b; font-size: 22px; letter-spacing: 2px; }
+/* 副标题 10px：极小的字号必须配 1px 字距才不糊，颜色也压到浅灰蓝。 */
 .brand-caption { color: #8795ad; font-size: 10px; letter-spacing: 1px; }
+/* 工作区切换器：比侧栏更实的白色底，暗示它是「嵌在玻璃上的一块控件」。 */
+/* 工作区切换器：比侧栏略实的白底，暗示它是「嵌在玻璃上的一块控件」而不是玻璃本身。 */
 .workspace-switch {
   margin: 0 0 28px;
   background: rgba(255,255,255,.48);
   border: 1px solid rgba(255,255,255,.8);
   border-radius: 16px;
+/* 内阴影做顶部高光、外阴影只留很淡的一层：小控件不需要强立体感。 */
   box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 4px 12px -8px #45618b18;
 }
+/* 导航项：相对定位 + z-index 1，是为了让液体指示器（z-index 0）从它下面滑过。 */
 .nav-item {
   position: relative;
   z-index: 1;
   border-radius: 12px;
   padding: 12px;
+/* 图标与文字间距 10px：既有呼吸感又不浪费侧栏宽度。 */
+/* 12px 内边距让导航项的点击热区覆盖整行，视觉上也与 12px 圆角成比例；10px 图标间距与侧栏整体节奏对齐。 */
   gap: 10px;
+/* 未选中态用蓝灰：比主文字浅一档，让选中项在视觉上自然浮出来。 */
   color: #687d9c;
   background: transparent;
+/* 颜色比背景先变完：观感上是「字先亮起来，底随后铺开」。 */
   transition: color 240ms var(--ease-liquid), background 300ms var(--ease-liquid);
 }
+/* 图标过渡更慢（380ms）并用弹簧：位移与描边变化分开，避免整块一起抖。 */
+/* 图标尺寸固定 24px 网格，只做 transform 与描边色过渡，颜色变化由 .nav-item 的 color 继承。 */
 .nav-item .icon { transition: transform 380ms var(--ease-spring), stroke 220ms; }
+/* 悬停：半透明白底 + 加深文字，不使用位移，鼠标扫过整列时不会晃。 */
 .nav-item:hover { background: rgba(255,255,255,.5); color: #3c5f9b; }
 .nav-item:hover .icon { transform: translateY(-1px) scale(1.08); }
+/* 选中态配色：浅蓝底 + 品牌蓝字，与 hover 的白色底形成明确区分。 */
 .nav-item.active { background: rgba(222,234,255,.68); color: #2d61cd; }
+/* 启用液体指示器后把选中项自身的背景设为透明：高亮改由指示器图层承担，两层叠加会显脏。 */
 .sidebar.has-liquid-nav .nav-item.active { background: transparent; }
+/* 液体指示器：绝对定位的独立图层，位置与尺寸由动效模块写入内联样式。 */
+/* pointer-events:none 让它不会挡住导航点击；z-index 0 位于导航项之下，形成「液体从下面滑过」的层次。 */
 .nav-liquid-indicator {
   position: absolute;
   z-index: 0;
   pointer-events: none;
   border: 1px solid rgba(255,255,255,.9);
   border-radius: 13px;
+/* 118 度双色渐变：模拟玻璃厚度造成的折射差异，比纯色更有体积感。 */
   background: linear-gradient(118deg, rgba(225,236,255,.95), rgba(237,244,255,.76));
+/* 外阴影给悬浮感，顶部白内阴影是受光面，底部淡蓝内阴影是背光面——三笔构成厚度。 */
   box-shadow: 0 4px 12px -6px rgba(53,97,184,.22), inset 0 1px 0 #fff, inset 0 -1px 0 rgba(146,178,232,.15);
 }
+/* 角标：淡粉底是为了与蓝色主色区分，让「风险数量」在侧栏里一眼可辨。 */
 .nav-item .count { background: rgba(251,227,232,.8); border: 1px solid rgba(255,255,255,.8); border-radius: 7px; }
+/* 分组标签：浅灰蓝 + 小字号，只做分隔提示，不与导航项争视线。 */
 .nav-label { color: #92a0b5; }
+/* 遮罩默认隐藏：只有移动端抽屉打开时才由媒体查询打开。 */
 .nav-scrim { display:none; }
+/* 用 !important 兜底：避免别的 display 规则把它顶回可见，遮罩误显示会挡住整页。 */
 .nav-scrim[hidden] { display:none!important; }
+/* 打开抽屉时禁用外壳的伪元素装饰，减少一层合成负担，避免与遮罩叠加发灰。 */
 .shell.nav-open::before { content:none; }
+/* 分组分隔线：上下间距不对称（16/24），因为下方紧接着的是新的分组标题。 */
 .nav-divider { background: rgba(118,143,179,.12); margin: 16px 12px 24px; }
+/* 连接状态：10px 小字 + 极淡分隔线，属于「存在但不打扰」的信息。 */
 .connection { border-color: rgba(118,143,179,.12); font-size: 10px; }
 .topbar {
+/* 顶栏与侧栏同为外壳玻璃，但更薄（60px）、圆角更小，形成横向的第二个玻璃片。 */
+/* 与侧栏顶部对齐的 12px：两块玻璃的上边缘在同一条水平线上。 */
   top: 12px;
+/* 固定 60px：内部只有面包屑与选择器，不需要自适应高度。 */
   height: 60px;
+/* 左右 24px 外边距：比侧栏留白更宽，让主内容区有更多横向空间。 */
   margin: 12px 24px 0;
+/* 内部左右 20px：与下方内容区的对齐关系保持一致。 */
   padding: 0 20px;
+/* 比侧栏略实一点：顶栏上要放可点击的选择器，需要更清晰的边界。 */
   background: rgba(255,255,255,.58);
+/* 接近纯白的描边：横向长条的高光必须够亮，否则会像一条灰带。 */
   border: 1px solid rgba(255,255,255,.92);
+/* 20px 圆角：介于外壳（24）与控件（12）之间。 */
   border-radius: 20px;
+/* 复用统一玻璃投影，保证顶栏与面板的悬浮感一致。 */
   box-shadow: var(--glass-shadow);
   -webkit-backdrop-filter: blur(28px) saturate(1.45);
   backdrop-filter: blur(28px) saturate(1.45);
 }
+/* 顶栏下拉的文字色：比主文字浅，避免与面包屑抢焦点。 */
 .topbar-select { color: #566d8e; }
+/* 胶囊选择器：白色半透明底 + 10px 圆角，是顶栏里最轻的控件形态。 */
 .pill-select { background: rgba(255,255,255,.45); border-color: rgba(255,255,255,.8); border-radius: 10px; }
+/* 头像：线性渐变 + 白色内阴影，模拟一颗凸起的玻璃珠。 */
 .avatar { background: linear-gradient(140deg, rgba(242,246,255,.96), rgba(220,230,250,.9)); border: 1px solid rgba(255,255,255,.88); box-shadow: inset 0 1px 1px white; }
+/* 演示数据标记：淡黄底，是全站唯一的暖色标签——「这是演示」必须一眼看出。 */
 .demo-tag { background: rgba(255,248,228,.76); border-color: rgba(233,219,176,.6); border-radius: 7px; }
+/* 主内容区顶部留 28px：让页面标题与顶栏之间保持呼吸距离。 */
 .main { padding-top: 28px; }
+/* 页头：底部 24px 间距，与下方第一块内容拉开层次。 */
 .page-heading { margin-bottom: 24px; }
+/* 24px / 650 字重 / 负字距：中文字号大时收紧字距才不会显得松散。 */
 h1 { font-size: 24px; font-weight: 650; letter-spacing: -.7px; color: #263b5c; }
+/* 页头说明文字用次要色：说明是背景信息，不参与主要阅读。 */
 .page-heading p { color: #8191a8; }
 
 /* 业务内容层以更高的不透明度保证数字可读；高光只落在边缘。 */
+/* 业务内容层统一使用面板玻璃：一组选择器共享同一份材质，改一处即全站生效。 */
+/* 这组选择器就是「内容层」的定义：凡是承载业务数据的容器都必须用同一份玻璃材质与圆角。 */
 .panel, .summary-strip, .data-card, .dept-card, .risk-summary-item, .report-feature {
+/* .72 不透明度：表格与数字叠在上面时对比度足够。 */
   background: var(--glass-panel);
   border: 1px solid var(--glass-edge);
+/* 20px 圆角：业务卡片这一层的统一语言。 */
   border-radius: var(--radius-panel);
+/* 额外加 1px 左侧内高光：面板比外壳更厚，受光面不只出现在顶部。 */
   box-shadow: var(--glass-shadow), inset 1px 0 0 rgba(255,255,255,.35);
+/* Safari 仍需前缀；模糊 18px 是「能看出背后有东西，但读不清」的临界值。 */
+/* saturate 1.15：模糊会让颜色发灰，轻微提高饱和度补偿。 */
   -webkit-backdrop-filter: blur(18px) saturate(1.15);
   backdrop-filter: blur(18px) saturate(1.15);
 }
+/* 摘要条单独用渐变底：四个指标横向排列，左亮右暗可以引导阅读顺序。 */
+/* 四列指标共用一整条玻璃：不拆成四张卡片，是为了让「摘要」作为一个整体被扫读。 */
 .summary-strip { background: linear-gradient(115deg,rgba(255,255,255,.84),rgba(255,255,255,.6)); padding: 28px 0; }
+/* 指标之间的分隔线：用极淡的左边框而不是整块卡片，保持一整条玻璃的连续感。 */
 .metric+.metric { border-left-color: rgba(124,148,181,.15); }
+/* 关键数字：负字距让 6 位数的金额不显得松散。 */
+/* 数值用等宽数字（tabular-nums 来自界面.css）：四个指标上下对齐时才不会因为数字宽度不同而抖动。 */
 .metric-number { letter-spacing: -.7px; color: #2a3e5d; }
+/* 负数用红色：财务语境里负数必须一眼可辨，不能只靠正负号。 */
 .metric-number.negative { color: var(--red); }
+/* 指标名：浅灰蓝小字，永远在数字下方，不抢数字的视觉权重。 */
 .metric-label { color: #8190a6; }
+/* 标签图标再压浅一档：纯装饰，不能与数字同色。 */
 .metric-label .icon { color: #9caec6; }
+/* 行高 1.7：说明类文字行距要松，否则长句会糊成一片。 */
 .panel-head .meta, .page-heading p { line-height: 1.7; }
+/* 区块标题统一深蓝灰：三级标题同色，靠字号区分层级。 */
 .panel-head h2, .data-card h2, .dept-header h2 { color: #324d71; }
+/* 图表网格线：用极低透明度的蓝灰，作为参考线存在但不与数据线争。 */
 .chart .grid { stroke: rgba(135,156,184,.17); }
+/* 风险行分隔线：比表格线更淡，因为风险列表本身已有标签与色块区分。 */
 .risk-row { border-top-color: rgba(132,155,187,.12); }
+/* 风险列表底部区域：淡蓝底 + 顶部细线，与列表主体轻微分层。 */
 .risk-footer { background: rgba(239,245,255,.42); border-top-color: rgba(132,155,187,.1); color: #7a8da9; }
+/* 风险等级标记：小方块 + 白描边 + 内高光，读起来像一颗玻璃纽扣。 */
 .risk-marker { border: 1px solid rgba(255,255,255,.84); box-shadow: inset 0 1px 0 white; border-radius: 10px; }
+/* 标签基础：7px 圆角 + 3/8 内边距，是全文最小的胶囊形状。 */
 .tag { border-radius: 7px; padding: 3px 8px; }
+/* 高风险标签：淡红底。文字色由界面.css 的语义色决定，这里只管底色。 */
 .tag.high { background: rgba(254,234,238,.8); }
+/* 关注标签：淡橙底，与高风险的红色拉开色相距离。 */
 .tag.watch { background: rgba(255,244,222,.8); }
+/* 正常标签：淡绿底，是「无需处理」的视觉信号。 */
 .tag.normal { background: rgba(226,246,238,.8); }
+/* 蓝色标签：用于中性但需要强调的状态（例如「已生成」）。 */
 .tag.blue { background: rgba(227,237,255,.85); }
+/* 中性标签：灰蓝底，用于无褒贬的说明性标记。 */
 .tag.neutral { background: rgba(232,239,248,.76); }
+/* 含表格的面板单独加实底：表格区域信息密度最高，必须牺牲一点玻璃感换取可读性。 */
 .panel:has(table) { background: rgba(255,255,255,.8); }
+/* 表头：淡蓝底 + 浅灰蓝文字，横向扫视时能快速定位列。 */
+/* 表头不吸顶：页面滚动区域在表格外层，吸顶会与顶栏玻璃重叠，反而降低可读性。 */
 th { background: rgba(232,239,249,.37); color: #7e90ab; border-color: rgba(128,151,182,.1); }
+/* 单元格下边框：极淡的横线，只做行间引导，不做竖线（竖线会让宽表变碎）。 */
 td { border-bottom-color: rgba(132,155,187,.1); }
+/* 行背景过渡：悬停高亮需要渐变而不是瞬变，否则鼠标划过时整屏都在闪。 */
 tbody tr { transition: background 240ms var(--ease-liquid); }
+/* 悬停行：淡蓝底，配合表的横向滚动，用户能一直跟住当前行。 */
 tbody tr:hover { background: rgba(230,240,255,.5); }
+/* 表格底部与标签栏共用分隔线颜色：同属「区域边界」。 */
 .table-bottom, .tabs { border-color: rgba(128,151,182,.12); }
+/* 标签栏用 gap 而不是分隔线：8px 间距已经足够区分，加线反而碎。 */
 .tabs { gap: 8px; padding: 8px 16px; }
+/* 标签页：去掉下边框改用圆角底，从「页签」变成「胶囊按钮」，与整体材质一致。 */
+/* 标签页的点击热区比文字大一圈：8px 12px 的内边距保证鼠标不用精确瞄准文字。 */
 .tab { border-bottom: 0; padding: 8px 14px; border-radius: 10px; transition: background 360ms var(--ease-liquid), color 240ms; }
+/* 悬停：极淡蓝底，提示可点。 */
 .tab:hover { background: rgba(233,241,255,.55); color: #5578ad; }
 .tab.active {
+/* 选中：渐变底 + 内高光 + 外阴影，是三态里唯一有「凸起」感的。 */
   color: #3869c6;
   background: linear-gradient(130deg,rgba(233,241,255,.93),rgba(242,247,255,.86));
   box-shadow: inset 0 1px 0 white, 0 2px 8px -5px rgba(62,99,165,.2);
 }
+/* 选中标签再加一圈 1px 描边：在浅色背景上把边界交代清楚。 */
 .tabs .tab.active { outline: 1px solid rgba(199,217,247,.38); }
+/* 搜索框与筛选器同材质：白底 + 内阴影，输入区需要比周围更「实」。 */
 .search-field input, .filter-select {
   background: rgba(255,255,255,.65);
   border: 1px solid rgba(153,178,213,.28);
@@ -170,6 +334,7 @@ tbody tr:hover { background: rgba(230,240,255,.5); }
   box-shadow: inset 0 1px 2px rgba(91,120,164,.025), 0 1px 0 rgba(255,255,255,.8);
   transition: border-color 260ms var(--ease-liquid), box-shadow 360ms var(--ease-liquid), background 260ms;
 }
+/* 聚焦：底色提到接近纯白 + 外圈 4px 极淡蓝光晕，不用粗描边，避免布局跳动。 */
 .search-field input:focus, .filter-select:focus { background: rgba(255,255,255,.96); box-shadow: 0 0 0 4px rgba(69,121,230,.07); }
 
 /* 按钮表现为有弧度的玻璃表面；按下、释放和悬停共用响应曲线。 */
@@ -177,48 +342,84 @@ tbody tr:hover { background: rgba(230,240,255,.5); }
   position: relative;
   isolation: isolate;
   overflow: hidden;
+/* 12px 圆角：与输入框同一档，保证「可点」与「可输入」的形状语言一致。 */
+/* 外层按钮容器用相对定位 + 溢出隐藏，是为水波纹（.liquid-ripple）裁出圆形边界。 */
   border-radius: var(--radius-control);
   border: 1px solid rgba(255,255,255,.9);
+/* 145 度双色渐变：左上亮、右下暗，模拟光从左上打来的玻璃面。 */
   background: linear-gradient(145deg,rgba(255,255,255,.88),rgba(247,250,255,.66));
+/* 三层阴影：外投影给悬浮、顶部内高光给厚度、1px 外描边给边界。 */
   box-shadow: 0 2px 6px -3px rgba(43,79,139,.18), inset 0 1px 0 #fff, 0 0 0 1px rgba(147,172,207,.13);
+/* 最小高度 36px：满足触控目标尺寸，也保证中英文混排时不塌陷。 */
   min-height: 36px;
+/* 左右内边距比上下大：中文按钮文字需要更宽的横向呼吸。 */
   padding: 9px 14px;
+/* 默认文字色：比主文字浅，让主要按钮（.primary）自然突出。 */
   color: #567093;
+/* 四个属性各自不同时长：位移最慢（有重量）、颜色最快（要跟手）。 */
   transition: transform 420ms var(--ease-spring), box-shadow 380ms var(--ease-liquid), background 280ms, color 240ms;
 }
 .btn:hover {
+/* 悬停上抬 2px 并提亮：这是全站最频繁的交互反馈，幅度必须小而确定。 */
   transform: translateY(-2px);
   border-color: rgba(255,255,255,.96);
   background: rgba(255,255,255,.93);
+/* 上抬后阴影变大变深：与 transform 一起构成「离开桌面」的错觉。 */
   box-shadow: 0 7px 16px -8px rgba(43,79,139,.26), inset 0 1px 0 #fff, 0 0 0 1px rgba(147,172,207,.16);
 }
+/* 按下：回到原位并缩到 96%，配合 110ms 的时长形成「一按即到底」的手感。 */
 .btn:active { transform: translateY(0) scale(.96); transition-duration: 110ms; }
+/* 主按钮：品牌蓝渐变 + 白字，是全页唯一使用高饱和填充的控件。 */
+/* 主按钮是全站唯一的高饱和填充：同屏只应出现一个，用于「生成报告」「开始分析」这类主操作。 */
 .btn.primary {
   color: #fff;
   border-color: rgba(89,139,255,.74);
+/* 三色渐变：亮色集中在上部 46%，下半段压深，模拟曲面受光。 */
   background: linear-gradient(150deg,#5e8df0 0%,#3973e9 46%,#2b61d6 100%);
+/* 顶白底深的双向内阴影：蓝色表面同样需要厚度感，否则会像一块色块。 */
   box-shadow: 0 5px 14px -6px rgba(37,91,211,.46), inset 0 1px 0 rgba(255,255,255,.48), inset 0 -1px 0 rgba(24,65,155,.18);
 }
+/* 悬停整体提亮一档：主按钮已有强色，不再上抬，只改亮度，避免抖动。 */
 .btn.primary:hover { background: linear-gradient(145deg,#6a96f6,#427bed 48%,#3067dc); box-shadow: 0 8px 20px -7px rgba(37,91,211,.48), inset 0 1px 0 rgba(255,255,255,.58); }
+/* 幽灵按钮：几乎透明、无阴影，用于次要或破坏性操作前的低权重入口。 */
 .btn.ghost { background: rgba(255,255,255,.15); box-shadow: none; border-color: transparent; }
+/* 危险操作：只把文字改成红色并加淡红描边，不用红色填充，降低误触后的视觉冲击。 */
 .btn.danger { color: var(--red); border-color: rgba(216,145,156,.22); }
+/* 小号按钮：圆角缩到 10px，与更小的尺寸成比例。 */
 .btn.small { border-radius: 10px; }
+/* 禁用态：去掉位移与投影，只留顶部内高光——看起来「平了」，就是不可用。 */
 .btn:disabled { transform: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.6); }
+/* 按钮内图标单独过渡：文字不动、图标微移，是更精致的悬停语言。 */
 .btn .icon { transition: transform 440ms var(--ease-spring); }
+/* 悬停时图标上移 1px：与按钮本体的 2px 形成差速，产生层次。 */
 .btn:hover .icon { transform: translateY(-1px); }
+/* 图标按钮：同样需要相对定位 + 溢出隐藏，因为水波纹也作用在它身上。 */
 .icon-btn { position: relative; overflow: hidden; border-radius: 10px; transition: transform 380ms var(--ease-spring), background 260ms; }
+/* 悬停：放大 8% + 淡蓝底，比按钮更轻，因为它通常是工具栏里的高频小操作。 */
 .icon-btn:hover { background: rgba(220,234,255,.64); transform: scale(1.08); }
+/* 按下缩到 91% 且只用 100ms：图标按钮的点击反馈要极其干脆。 */
 .icon-btn:active { transform: scale(.91); transition-duration: 100ms; }
+/* 文字按钮内的箭头图标：过渡稍慢（420ms），让位移看起来是「划过去」的。 */
 .text-btn .icon { transition: transform 420ms var(--ease-spring); }
+/* 悬停时末尾箭头右移 3px：明确表示「会跳到下一处」。 */
 .text-btn:hover .icon:last-child { transform: translateX(3px); }
+/* 水波纹：绝对定位圆形 + 径向渐变，位置与尺寸由动效模块写入内联样式。 */
 .liquid-ripple { pointer-events: none; position: absolute; border-radius: 50%; background: radial-gradient(circle,rgba(255,255,255,.56),rgba(163,197,255,.16) 60%,transparent 72%); z-index: -1; }
+/* 主按钮上的波纹更淡更白：深蓝底上如果还用蓝白渐变，会显得浑浊。 */
 .btn.primary .liquid-ripple { background: radial-gradient(circle,rgba(255,255,255,.42),rgba(255,255,255,.06) 65%,transparent 72%); }
+/* 键盘焦点：2px 实线 + 4px 偏移，只在键盘导航时出现，不干扰鼠标用户。 */
+/* 只给三类高频交互元素做焦点环：表格行、卡片等非交互容器不参与键盘导航，不需要焦点样式。 */
 .btn:focus-visible, .icon-btn:focus-visible, .nav-item:focus-visible { outline: 2px solid rgba(60,111,220,.7); outline-offset: 4px; }
 
 /* 整改空间：轻透的分组托盘与稍实的内容卡形成清楚的层次。 */
+/* 风险摘要卡：24px 内边距给大号数字留足四周呼吸。 */
+/* 风险摘要块与 .panel 共用材质，只改内边距与数字字号，保持「同一层玻璃」的观感。 */
 .risk-summary-item { padding: 24px; }
+/* 风险数量 30px：摘要区里层级最高的信息。 */
 .risk-summary-item .num { font-size: 30px; }
+/* 整改看板三列间距 20px：列与列之间需要明显空档，否则容易误读归属。 */
 .tasks { gap: 20px; }
+/* 看板列：比卡片更透、圆角更大（22px），作为「托盘」承载内部的任务卡。 */
 .task-column {
   background: rgba(236,242,252,.4);
   border: 1px solid rgba(255,255,255,.8);
@@ -228,8 +429,12 @@ tbody tr:hover { background: rgba(230,240,255,.5); }
   -webkit-backdrop-filter: blur(16px) saturate(1.12);
   backdrop-filter: blur(16px) saturate(1.12);
 }
+/* 列头：底部 20px 内边距，与列内第一张卡片拉开距离。 */
 .column-head { padding: 4px 8px 20px; color: #5c7396; }
+/* 列头计数徽标：24×24 的居中网格，用 grid + place-items 一行实现绝对居中。 */
 .column-head>span:last-child { min-width: 24px;height:24px;display:grid;place-items:center;background:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.9);border-radius:9px;font-size:11px; }
+/* 任务卡：比列更实的渐变底 + 16px 圆角，通过材质差异表达「卡片在托盘中」。 */
+/* 任务卡的渐变比面板更亮：看板列本身已经是一层玻璃，卡片必须再实一点才能拉开层次。 */
 .task-card {
   background: linear-gradient(130deg,rgba(255,255,255,.94),rgba(255,255,255,.75));
   border: 1px solid rgba(255,255,255,.94);
@@ -238,45 +443,86 @@ tbody tr:hover { background: rgba(230,240,255,.5); }
   margin-bottom: 16px;
   transition: transform 460ms var(--ease-spring), box-shadow 460ms var(--ease-liquid), border-color 300ms;
 }
+/* 悬停上抬 3px 并加深阴影：看板里卡片多，需要明确的「正在指向哪一张」。 */
 .task-card:hover { transform: translateY(-3px);box-shadow:0 12px 24px -13px rgba(50,77,125,.25),inset 0 1px 0 white;border-color:white; }
+/* 任务标题 14px/600：卡片内字号必须收敛，否则一屏放不下三列。 */
 .task-card h3 { color: #344b6e; font-size:14px;font-weight:600; }
+/* 任务描述行高 1.9：整改措施通常较长，行距松一点才好读。 */
 .task-card p { color:#7c8da7;line-height:1.9; }
+/* 卡片底部元信息：用一条极淡的顶边线与正文分隔。 */
 .task-card .task-meta { border-top-color:rgba(128,151,182,.12); }
+/* 卡片内按钮用淡蓝底：在白色卡片上需要一点色彩才能被识别为可点。 */
 .task-card .btn { background:rgba(239,245,255,.58);border-color:rgba(255,255,255,.85);box-shadow:inset 0 1px 0 white;color:#5a7eb8; }
+/* 悬停加深淡蓝底：与全站按钮一致，但保持卡片内的低对比度。 */
 .task-card .btn:hover { background:rgba(229,239,255,.85); }
+/* 数据卡与部门卡：只对阴影与描边做过渡，悬停时不改变尺寸（卡片较大，位移会晃眼）。 */
 .data-card, .dept-card { transition: box-shadow 380ms var(--ease-liquid), border-color 380ms; }
+/* 悬停：描边提亮 + 阴影扩散，做出「浮起来一点」的感觉。 */
 .data-card:hover, .dept-card:hover { border-color:white;box-shadow:0 10px 28px -16px rgba(44,72,126,.22),inset 0 1px 0 white; }
+/* 文件符号与部门头像：13px 圆角 + 白描边 + 内高光，同一套玻璃小件。 */
+/* 两个小图标容器共用同一套玻璃小件样式：13px 圆角夹在控件（12）与面板（20）之间。 */
 .file-symbol, .dept-avatar { border-radius: 13px; border:1px solid rgba(255,255,255,.9);box-shadow:inset 0 1px 0 white; }
+/* 拖放区：虚线边框 + 24px 内边距，是唯一使用虚线边框的元素（明确「这里可以放东西」）。 */
+/* 虚线边框是「可放置」的通用语义：全站只有拖放区使用虚线，避免语义混淆。 */
 .dropzone { border-radius:16px;background:rgba(246,250,255,.55);border-color:rgba(113,151,208,.34);padding:24px;transition:background 360ms,transform 440ms var(--ease-spring),border-color 360ms; }
+/* 拖拽悬停：底色加深并放大 0.8%，幅度极小但足以提示「松手即可」。 */
 .dropzone.dragover { background:rgba(223,237,255,.75);transform:scale(1.008); }
+/* 进度轨道：淡蓝灰底，与内容区区分但不抢眼。 */
 .progress-track { background:rgba(203,216,235,.25); }
+/* 进度条：蓝色渐变，与主按钮同色系，暗示「正在推进」。 */
 .progress-track>span { background:linear-gradient(90deg,#739cf4,#3973e8); }
+/* 报告封面：蓝紫双色渐变，是页面里唯一使用大面积紫调的区域，用来突出「报告」这个产出物。 */
 .report-cover { background:linear-gradient(145deg,rgba(219,233,255,.5),rgba(237,234,251,.45)); }
+/* 封面上的纸张缩影：8px 圆角 + 大投影 + 逆时针 5 度倾斜，模拟一张实际存在的纸。 */
 .paper-mini { border-radius:8px;box-shadow:0 16px 32px -14px #5574aa40;transform:rotate(-5deg);transition:transform 600ms var(--ease-spring); }
+/* 悬停时纸张转正一点并上浮：轻微的物理反馈，暗示可以打开。 */
 .report-feature:hover .paper-mini { transform:rotate(-2deg) translateY(-4px); }
+/* 时间线条目：用设计 token 里的分隔线，与全局线条保持一致。 */
 .timeline-entry { border-bottom-color:var(--line); }
+/* 时间线节点：内高光 + 淡绿底 + 白描边，用 !important 覆盖通用图标色（图标本身有内联样式）。 */
 .timeline-symbol { box-shadow:inset 0 1px 0 white;background:rgba(240,250,246,.7)!important;border-color:rgba(255,255,255,.85)!important; }
+/* 提示条：淡黄底（注意）+ 13px 圆角，与演示标记同一暖色系，表示「需要留意」。 */
 .notice { border-radius:13px;background:rgba(255,250,236,.74);border-color:rgba(232,216,180,.45); }
+/* 信息提示：改用淡蓝底，与「注意」区分开。 */
 .notice.info { background:rgba(235,243,255,.72);border-color:rgba(187,208,243,.35); }
+/* 来源框与金额明细：淡蓝底 + 白描边 + 内高光，作为「引用的原始数据」区块。 */
 .source-box, .detail-amounts { background:rgba(236,242,252,.65);border:1px solid rgba(255,255,255,.85);border-radius:14px;box-shadow:inset 0 1px 0 white; }
 
 /* 弹窗与助手玻璃更厚，隔离背景纹理，使长文本保持稳定易读。 */
+/* 遮罩：半透明深蓝 + 8px 模糊，把背景压下去但不完全遮死（保留空间感）。 */
+/* 遮罩的模糊只有 8px：目的是把背景压暗压糊，但不能糊到看不出页面结构，否则用户会失去位置感。 */
 .overlay-backdrop { background:rgba(75,98,135,.16);-webkit-backdrop-filter:blur(8px) saturate(.9);backdrop-filter:blur(8px) saturate(.9); }
+/* 弹窗：最不透明的玻璃（.88）+ 26px 圆角 + 32px 模糊，保证长文本与表单绝对可读。 */
+/* 弹窗材质是全站最厚的一层：32px 模糊 + .88 不透明度，保证表单校验信息与长文本在任何背景上都清晰。 */
 .dialog {
+/* 浮层玻璃变量：与报告预览共用，改一处两处同步。 */
   background:var(--glass-overlay);
+/* 接近纯白的描边：浮层边缘必须锐利，否则会和遮罩糊在一起。 */
   border:1px solid rgba(255,255,255,.95);
+/* 26px 是全站最大圆角：弹窗是层级最高的浮层，圆角最大符合「越近越圆」的规律。 */
   border-radius:26px;
+/* 80px 大扩散阴影：弹窗要明确「浮在整页之上」，同时底部加淡蓝内阴影补全厚度。 */
   box-shadow:0 24px 80px -24px rgba(48,71,113,.3),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(196,213,242,.3);
+/* 模糊 32px：全站最大值，弹窗背后的内容只允许存在色块，不允许出现可辨认的文字。 */
+/* 饱和 1.4：强模糊会让颜色发灰，需要更高的补偿值。 */
   -webkit-backdrop-filter:blur(32px) saturate(1.4);
   backdrop-filter:blur(32px) saturate(1.4);
+/* 入场动画交给 WAAPI（动效模块），CSS 这里清空，避免两套动画同时作用于 transform。 */
   animation:none;
 }
+/* 弹窗头部：24/28 内边距，四周留白比内容区更宽一档。 */
 .dialog-head { border-bottom-color:rgba(133,156,189,.1);padding:24px 28px; }
+/* 弹窗标题 20px：比页面 h1 小一档，但比正文明显大。 */
 .dialog-head h2 { color:#324b70;font-size:20px; }
+/* 弹窗主体：与头部同一内边距，保证左右对齐。 */
 .dialog-body { padding:24px 28px; }
+/* 弹窗底部：淡蓝底 + 顶部分隔线，把操作按钮与表单内容分开。 */
 .dialog-footer { padding:16px 28px;background:rgba(243,247,254,.6);border-top-color:rgba(133,156,189,.1); }
+/* 抽屉式弹窗：固定 500px 宽、四周 12px 外边距，看起来像从右侧抽出的一块独立玻璃。 */
 .dialog.drawer { width:500px;margin:12px;height:calc(100% - 24px);border-radius:24px; }
+/* 表单分组标题：顶部分隔线 + 较深文字色，用来切分长表单。 */
 .form-section { border-top-color:rgba(133,156,189,.12);color:#4b6488; }
+/* 表单控件同材质：白底 + 内阴影，聚焦时才提亮，静止状态保持低调。 */
 .field input, .field select, .field textarea, .tier-row input {
   border-radius:11px;
   border-color:rgba(148,175,211,.3);
@@ -284,12 +530,16 @@ tbody tr:hover { background: rgba(230,240,255,.5); }
   box-shadow:inset 0 1px 2px rgba(67,95,140,.03),0 1px 0 rgba(255,255,255,.6);
   transition:border-color 260ms,box-shadow 380ms var(--ease-liquid),background 260ms;
 }
+/* 聚焦：白底提亮 + 4px 淡蓝光晕 + 1px 描边，三重提示但都不改变尺寸。 */
 .field input:focus, .field select:focus, .field textarea:focus { background:rgba(255,255,255,.95);box-shadow:0 0 0 4px rgba(58,112,227,.07);outline:1px solid rgba(68,120,229,.4); }
+/* 复选框 4px 圆角：小控件用小圆角，与 12px 的按钮形成对比。 */
 .check-label input[type=checkbox] { border-radius:4px; }
 .assistant {
   top:84px;
   margin:12px 16px 16px 0;
   height:calc(100vh - 100px);
+/* 助手侧栏：320px 固定宽度 + 24px 圆角 + 28px 模糊，是不遮挡主内容的悬浮玻璃板。 */
+/* 320px：中文对话气泡在这个宽度下大约一行 18 字，可读性最好。 */
   width:320px;
   background:rgba(255,255,255,.7);
   border:1px solid rgba(255,255,255,.9);
@@ -299,25 +549,56 @@ tbody tr:hover { background: rgba(230,240,255,.5); }
   -webkit-backdrop-filter:blur(28px) saturate(1.35);
   backdrop-filter:blur(28px) saturate(1.35);
 }
+/* 助手头部：20px 内边距 + 分隔线，与对话区分离。 */
+/* 头部固定不滚动：对话很长时用户仍能看到「衡策助手」与关闭按钮。 */
 .assistant-head { border-bottom-color:var(--line);padding:20px; }
+/* 上下文条：淡蓝底 + 白描边，用来展示「当前问的是哪家公司哪个期间」，与对话内容区分。 */
 .assistant-context { background:rgba(228,239,255,.58);border:1px solid rgba(255,255,255,.8);border-radius:12px; }
+/* 欢迎语标题 18px：介于正文与标题之间，不喧宾夺主。 */
 .assistant-welcome h3 { color:#34537d;font-size:18px; }
+/* 预设问题：白底卡片 + 圆角，悬停右移 3px，暗示「点它会填进输入框」。 */
+/* 预设问题卡用白底而不是蓝底：它们是「建议」不是「已选」，颜色上必须比用户气泡弱。 */
 .suggestion { border-radius:12px;background:rgba(255,255,255,.6);border-color:rgba(255,255,255,.9);box-shadow:inset 0 1px 0 white;transition:transform 420ms var(--ease-spring),background 260ms; }
+/* 悬停：右移并提亮，方向与「送进输入框」的动线一致。 */
 .suggestion:hover { transform:translateX(3px);background:rgba(235,243,255,.85);border-color:white; }
+/* 输入区：淡蓝底 + 顶部分隔线，形成「固定的底部托盘」。 */
 .assistant-compose { background:rgba(244,248,255,.4);border-top-color:var(--line); }
+/* 输入框容器：白底 + 三层阴影（投影、1px 描边、内高光），是助手区最实的一块。 */
+/* 输入容器比助手面板更实：输入区需要明确边界，否则用户不知道点哪里开始打字。 */
 .compose-box { border-radius:16px;background:rgba(255,255,255,.85);border:1px solid white;box-shadow:0 4px 16px -10px rgba(50,79,128,.2),0 0 0 1px rgba(147,172,207,.12),inset 0 1px 0 white; }
+/* 聚焦：外圈 3px 淡蓝光晕。用 focus-within 而不是 :focus，因为真正的输入框在容器内部。 */
+/* 光标进入输入框时容器整体提亮，让焦点范围覆盖整个输入区而不只是那一行文字。 */
 .compose-box:focus-within { box-shadow:0 0 0 3px rgba(64,117,226,.07),0 4px 16px -10px rgba(50,79,128,.2); }
+/* 用户气泡：右上角 4px（其余 16px）——小圆角朝外，视觉上指向「这是我说的话」。 */
 .chat-message.user { background:linear-gradient(120deg,rgba(227,237,255,.9),rgba(238,244,255,.7));border:1px solid rgba(255,255,255,.9);border-radius:16px 16px 4px 16px; }
+/* 轻提示：白底玻璃 + 16px 圆角 + 24px 模糊，悬浮在所有内容之上。 */
 .toast { background:rgba(255,255,255,.84);border:1px solid white;border-radius:16px;box-shadow:0 12px 32px -12px rgba(42,68,112,.22),inset 0 1px 0 white;backdrop-filter:blur(24px) saturate(1.25);animation:toast-liquid 480ms var(--ease-spring); }
+/* 轻提示入场：从下方 16px 浮起 + 轻微放大，480ms 弹簧曲线，与弹窗语言一致。 */
+/* 轻提示从下方浮起并轻微放大：位置在视口底部，向上出现符合「从下方弹出」的心理预期。 */
 @keyframes toast-liquid { from{opacity:0;transform:translateY(16px) scale(.97)} to{opacity:1;transform:none} }
-.embedded-nav { top:84px;margin:12px 24px 0;padding:8px 12px;background:rgba(255,255,255,.56);border:1px solid white;border-radius:16px;box-shadow:var(--glass-shadow);backdrop-filter:blur(24px) saturate(1.4);gap:4px; }
-.embedded .assistant { top:144px;height:calc(100vh - 160px); }
+/* 窗口形态（embedded）：顶部 40px 玻璃拖拽带让位系统窗控三键（落在玻璃
+   背景上，与 UI 同底色即融入）；侧边栏回归，全部内容下移安全区。 */
+/* 嵌入式窗口的拖拽带：顶部 40px，用 app-region:drag 让整条区域可拖动窗口。 */
+.embedded .win-grip { position:fixed;inset:0 0 auto 0;height:40px;-webkit-app-region:drag;z-index:60; }
+/* 嵌入式模式下侧栏下移到 52px：给 40px 拖拽带 + 12px 间距让位。 */
+.embedded .sidebar { inset:52px auto 12px 12px; }
+/* 顶栏同步下移：margin-top 与 top 都写 52px，保证不重叠。 */
+.embedded .topbar { margin-top:52px;top:52px; }
+/* 助手高度同步扣减：embedded 下可用高度变少，必须重算，否则底部输入框会被裁掉。 */
+.embedded .assistant { top:124px;height:calc(100vh - 136px); }
 
+/* 不支持毛玻璃时的降级：所有玻璃层改成接近纯色的实底，保证文字可读（宁可失去质感也不能失去可读性）。 */
+/* 降级分支单独用 @supports not：不支持的浏览器会命中这里，宁可变成纯色界面也要保证数字可读。 */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+/* 外壳层降级为 #f5f8fd：比页面底色略亮，仍保留「浮起」的关系。 */
   .sidebar,.topbar,.embedded-nav,.assistant { background:#f5f8fd; }
+/* 内容层降级为纯白：数字与表格必须保住最高对比度。 */
   .panel,.summary-strip,.task-card,.data-card,.dept-card,.risk-summary-item,.dialog,.toast { background:#fff; }
 }
+/* 超宽屏：只加大顶栏左右外边距，内容区宽度交给外层栅格，避免元素被拉得过散。 */
+/* 超宽屏只调整外边距：不放大字号与控件，避免在 4K 屏上出现「元素被拉散」的观感。 */
 @media(min-width:1650px){.topbar{margin-left:32px;margin-right:32px}.embedded-nav{margin-left:32px;margin-right:32px}}
+/* 窄屏第一档：侧栏 200→180，顶栏与助手栏同步收紧，保持内容区宽度不缩水。 */
 @media(max-width:1250px){
   .sidebar{width:180px;inset:12px auto 12px 8px;padding-left:10px;padding-right:10px}
   .brand{padding-left:8px;gap:10px}.nav-item{padding:12px 10px;gap:10px}
@@ -325,18 +606,26 @@ tbody tr:hover { background: rgba(230,240,255,.5); }
   .assistant{right:0;width:340px;top:84px;margin-right:12px}
   .task-column{padding:12px}.risk-summary-item{padding:20px}
 }
+/* 窄屏第二档：侧栏 164，字号整体下调 1px，摘要条与任务卡改为两列/更紧凑的内边距。 */
 @media(max-width:1020px){
   .sidebar{width:164px;padding-left:8px;padding-right:8px}.brand{padding-left:6px;gap:8px}.brand img{width:32px;height:32px}.brand-name{font-size:20px}
   .nav-item{font-size:12px;padding:12px 8px;gap:8px}.workspace-switch{padding:10px;gap:8px}.workspace-switch strong{font-size:11px}
   .summary-strip{padding:24px 0}.task-column{padding:16px}.task-card{width:calc(50% - 6px)}
   .page-heading h1{font-size:22px}
 }
+/* 移动端断点：侧栏变成抽屉（默认移出屏幕 -100%），所有固定尺寸改为视口相对单位。 */
+/* 760px 是平板竖屏与手机的分界：从这里开始侧栏改为抽屉、助手改为整宽浮层、字号整体下调。 */
 @media(max-width:760px){
   .sidebar{width:216px;inset:8px auto 8px 8px;padding:24px 16px 16px;transform:translateX(calc(-100% - 16px));border-radius:24px;transition:transform 480ms var(--ease-settle)}
+/* 抽屉打开：transform 归零。用 transform 而不是改 left，才能走合成层动画。 */
   .shell.nav-open .sidebar{transform:translateX(0)}
+/* 抽屉内滚动并阻止滚动穿透：滚到尽头时不会把背后的页面一起滚动。 */
   .sidebar{overflow-y:auto;overscroll-behavior:contain}
+/* 关闭状态下用 inert 让抽屉不可交互：既防误触，也让读屏跳过它。 */
   .sidebar[inert]{pointer-events:none}
+/* 移动端遮罩：全屏按钮（可点击关闭）+ 5px 模糊，z-index 35 位于侧栏之下、内容之上。 */
   .shell.nav-open .nav-scrim{display:block;position:fixed;inset:0;width:100%;height:100%;padding:0;border:0;z-index:35;background:rgba(58,83,122,.18);backdrop-filter:blur(5px);cursor:default;-webkit-tap-highlight-color:transparent}
+/* 抽屉打开时锁定页面滚动：否则手指在遮罩上滑动会带动底层页面。 */
   body.navigation-open{overflow:hidden}
   .brand{gap:12px;padding-left:8px}.brand img{width:36px;height:36px}.brand-name{font-size:22px}.nav-item{font-size:13px;padding:12px;gap:12px}
   .topbar{margin:8px 8px 0;padding:0 10px;top:8px;height:52px;border-radius:16px;gap:4px}
@@ -352,15 +641,22 @@ tbody tr:hover { background: rgba(230,240,255,.5); }
   .overlay-backdrop{padding:12px;background:rgba(61,88,132,.2)}
   .assistant{top:68px;right:8px;margin:0;width:calc(100% - 16px);max-width:380px;height:calc(100dvh - 80px);border-radius:22px}
   .embedded-nav{margin:8px 8px 0;top:68px;padding:6px 8px;border-radius:14px;gap:4px}.embedded-nav .tab{padding:8px 12px}
-  .embedded .assistant{top:124px;height:calc(100dvh - 136px)}
+  .embedded .assistant{top:112px;height:calc(100dvh - 124px)}
 }
+/* 减少动效：把所有动画/过渡压到 1ms，并取消所有悬停位移——功能不变，只去掉运动。 */
+/* 减少动效模式下同时禁用悬停位移：只压时长不够，位移本身也会让前庭敏感用户不适。 */
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:1ms!important;animation-iteration-count:1!important;transition-duration:0ms!important;scroll-behavior:auto!important}
   .btn:hover,.btn:active,.icon-btn:hover,.icon-btn:active,.task-card:hover,.report-feature:hover .paper-mini,.suggestion:hover,.brand:hover img{transform:none!important}
 }
+/* 打印：去掉所有背景、模糊、阴影与装饰层，报告以纯黑白内容输出。 */
+/* 打印样式必须放在最后：覆盖前面所有玻璃与阴影规则，确保导出的报告是纯内容。 */
 @media print {
   html,body,.dialog,.report-paper{background:#fff!important}
+/* 打印时隐藏纯装饰层：光斑、液体指示器、波纹、导航条与遮罩都不应出现在纸上。 */
   body::before,.nav-liquid-indicator,.liquid-ripple,.embedded-nav,.nav-scrim{display:none!important}
+/* 全局取消模糊与阴影：打印引擎渲染毛玻璃会变成灰块，必须显式关闭。 */
   *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;box-shadow:none!important}
+/* 打印弹窗：去边框与圆角，让报告内容直接铺满纸张。 */
   .dialog,.dialog.wide{border:0;border-radius:0}
 }

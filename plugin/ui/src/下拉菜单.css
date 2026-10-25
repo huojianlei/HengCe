@@ -1,49 +1,87 @@
+/* 本文件是「原生 select 增强」的样式层，只服务 下拉菜单.mjs 生成的三个部件：触发按钮、弹出面板、选项行。 */
+/* 为什么不直接用原生 select：原生下拉在玻璃主题里无法控制面板材质、无法分组小标题、也不能做键盘高亮项。 */
+/* 因此做法是隐藏原生控件、用按钮 + popover 复刻外观，同时把语义与键盘操作完整补回（aria-* 与 listbox 由脚本维护）。 */
 /* 同一套磨砂材质覆盖工具栏、筛选与表单，展开菜单由页面绘制。 */
+/* 原生 select 只是被视觉隐藏，仍然留在 DOM 里：表单提交、required 校验、reset 都要靠它。 */
+/* display:none 而不是 opacity:0 或移出屏幕：屏读器不会读到不可见的隐藏控件，避免双重朗读。 */
+/* 对应地，脚本会把它的值同步到按钮上（.glass-select-value），并保证按钮同样带有 role=combobox 语义。 */
 select.glass-select-native { display: none !important; }
+/* 触发按钮复刻表单控件的外观：40px 高度与输入框对齐，12px 圆角与 --radius-control 同档。 */
+/* justify-content:space-between 让「当前值」靠左、箭头靠右，长选项被截断时箭头位置不会漂移。 */
+/* width:100% 是默认值，工具栏里再用 .glass-select-compact 收窄，避免每个使用点都写一遍宽度。 */
 .glass-select-trigger {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
+/* 文字与箭头之间 12px：箭头宽度固定 16px，这个间距决定按钮在窄容器里先截断哪一侧。 */
   gap: 12px;
   min-height: 40px;
+/* 允许按钮在 flex 容器里被压到比内容更窄：不写这行，长报告名会把工具栏整行撑出横向滚动。 */
   min-width: 0;
+/* 默认占满容器：表单与筛选条里的下拉是「一整行」的控件，工具栏里的紧凑形态再单独覆盖宽度。 */
   width: 100%;
+/* 上下 8px、左右 12px：配合 12px 字号与 1.6 行高正好落在 40px 高度，与输入框、按钮同高。 */
+/* 左右比上下多 4px：文字离边框稍远一点，中文方块的视觉重心才不会贴边。 */
   padding: 8px 12px;
   border: 1px solid rgba(139, 163, 198, .24);
+/* 控件档圆角（12px）：与 界面.css 的输入框、按钮保持一致，全站「可点/可输入」的形状语言只有这一套。 */
   border-radius: 12px;
+/* 62% 白：比输入框（.62 同档）一致，比面板（.93）更透，形成「控件 < 面板」的材质层次。 */
   background: rgba(255, 255, 255, .62);
   color: var(--ink, #233550);
+/* 顶部 1px 内高光模拟玻璃倒角，极淡外投影只负责把按钮从背景上「托起 1px」，不做厚重阴影。 */
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), 0 2px 8px -6px rgba(43, 74, 126, .14);
   font: inherit;
   font-size: 12px;
   line-height: 1.6;
+/* 左对齐是刻意的：按钮内部是 span + svg 的 flex 布局，但按钮元素本身仍需清除浏览器默认的居中，否则空值态会漂到中间。 */
   text-align: left;
   cursor: pointer;
+/* 去掉 iOS 点击时的灰色高亮块：这段高亮会盖住圆角，看起来像控件被压扁；按下反馈由背景色过渡承担。 */
   -webkit-tap-highlight-color: transparent;
+/* 三个属性分档：颜色变化 180ms 要快（点击反馈），阴影 220ms 稍慢（体积感变化不应抢在颜色之前）。 */
+/* --ease-liquid 带兜底值 ease-out：该 token 定义在 玻璃主题.css，这里独立运行时也不会失效。 */
   transition: background 180ms var(--ease-liquid, ease-out), border-color 180ms, box-shadow 220ms var(--ease-liquid, ease-out);
 }
+/* 悬停只提亮背景与描边、不做位移：触发按钮常常紧贴表格，位移会让整行文字跟着抖。 */
+/* 排除 :disabled 是必要的：禁用态若还能悬停变色，用户会以为可以点。 */
 .glass-select-trigger:hover:not(:disabled) {
   border-color: rgba(98, 140, 211, .36);
   background: rgba(255, 255, 255, .85);
 }
+/* 展开态用更实的蓝底：面板盖住按钮一部分时，按钮仍要能被看出「正在使用中」。 */
+/* 这三行样式与 aria-expanded=true 一一对应，脚本在开合时切换类名与 aria 状态，两者不能只改一个。 */
 .glass-select-trigger.is-open {
   border-color: rgba(88, 139, 225, .52);
   background: rgba(238, 245, 255, .86);
   box-shadow: inset 0 1px 0 #fff, 0 0 0 3px rgba(84, 133, 225, .08);
 }
+/* 焦点环用 outline 而不是 box-shadow：outline 不影响布局，也不会被容器的 overflow 裁掉。 */
+/* 偏移 3px：与相邻控件拉开距离，键盘用户能分清焦点落在哪一个上。 */
 .glass-select-trigger:focus-visible {
+/* 2px 半透明蓝：足够醒目但不会盖住相邻文字；半透明是为了在深色背景上也不刺眼。 */
   outline: 2px solid rgba(49, 104, 233, .7);
   outline-offset: 3px;
 }
+/* 禁用态降低不透明度并换光标，同时保留原有布局尺寸，避免启用／禁用切换时页面跳动。 */
 .glass-select-trigger:disabled { opacity: .48; cursor: not-allowed; }
+/* 当前值单行省略：部门名、报告名都可能很长，这里只允许一行，超出用省略号，完整内容靠 title 与面板查看。 */
+/* min-width:0 由脚本侧的 flex 布局配合（不写会撑破按钮），省略号才会真正生效。 */
 .glass-select-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 箭头用内联 SVG 而不是字符：字符箭头在不同字体下形状不一致，也会被读屏器当成文本念出来。 */
+/* transform 过渡 260ms：与面板展开动画同时进行，箭头的翻转就是「面板已打开」的第二重提示。 */
 .glass-select-arrow { display: flex; flex: none; color: #7b8eab; transition: transform 260ms var(--ease-liquid, ease-out); }
+/* 固定 16px 并 display:block：消除 SVG 默认的行内基线留白，箭头才能与文字垂直居中对齐。 */
 .glass-select-arrow svg { display: block; width: 16px; height: 16px; }
+/* 展开时箭头翻转 180 度并变蓝：颜色变化同时承担「当前筛选已生效」的视觉暗示。 */
 .glass-select-trigger.is-open .glass-select-arrow { transform: rotate(180deg); color: var(--blue, #3168e9); }
 .glass-select-compact {
   flex: 0 1 auto;
   width: auto;
+/* 工具栏里的紧凑形态：32px 高、去掉描边与阴影，视觉上退成「一行文字 + 箭头」。 */
+/* max-width 160px 限制宽度：工具栏一行要并排放多个筛选器，宽度必须可预期。 */
+/* 透明边框而不是 border:none：保留 1px 占位，悬停变色时不会因为边框出现而整体位移。 */
   max-width: 160px;
   min-height: 32px;
   padding: 4px 8px;
@@ -53,65 +91,103 @@ select.glass-select-native { display: none !important; }
   background: rgba(255, 255, 255, .3);
   box-shadow: none;
 }
+/* 筛选形态介于默认与紧凑之间：36px 高、最小宽度保证「全部部门」这类四字标签不被截断。 */
+/* 为什么单独一档：数据工作区的筛选条需要比纯文本切换更明显的「可点」暗示，但又不能和主按钮抢注意力。 */
 .glass-select-filter { width: auto; min-width: 148px; min-height: 36px; padding-top: 6px; padding-bottom: 6px; }
 .glass-select-menu {
   position: fixed;
   inset: auto;
   z-index: 1000;
   display: block;
+/* popover 元素默认不继承页面的 border-box 重置，这里显式声明，200px 宽度才包含内边距与描边。 */
   box-sizing: border-box;
   width: 200px;
+/* 面板用 fixed 定位并由脚本按触发按钮的位置计算坐标：放在 body 下而不是按钮内部，才能躲开表格与卡片容器的 overflow 裁剪。 */
+/* z-index 1000 是全站最高层：必须盖住弹窗（.overlay-backdrop 更低），否则设置弹窗里的下拉会被遮住。 */
+/* max-height 320px 加纵向滚动：实体较多的选项（部门、科目）超出后滚动，不把面板拉得比视口还长。 */
   max-height: 320px;
   margin: 0;
   padding: 6px;
   overflow-x: hidden;
   overflow-y: auto;
+/* 滚动到列表两端时不把滚动传给页面：否则选项翻到底后整个工作台会跟着动，用户会失去位置感。 */
   overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(110, 139, 182, .38) transparent;
   border: 1px solid rgba(255, 255, 255, .96);
+/* 面板圆角（16px）介于控件 12 与弹窗 24 之间：浮层比控件圆、比弹窗利，符合它的临时性。 */
   border-radius: 16px;
+/* 93% 近乎不透明：面板里是密集的文字选项，任何背景透出都会降低辨认速度，这里故意放弃一部分玻璃感。 */
   background: linear-gradient(140deg, rgba(255, 255, 255, .93), rgba(239, 246, 255, .87));
   color: var(--ink, #233550);
+/* 大偏移 + 负扩散的大投影给「浮在页面之上」的高度感，近距小投影负责贴边细节，顶部内高光是玻璃倒角。 */
   box-shadow: 0 20px 48px -16px rgba(37, 65, 111, .28), 0 4px 14px -6px rgba(37, 65, 111, .12), inset 0 1px 0 #fff;
   -webkit-backdrop-filter: blur(28px) saturate(1.35);
   backdrop-filter: blur(28px) saturate(1.35);
+/* popover 是顶层元素，不在页面容器内，字体不会自动继承；不写这行会退回浏览器默认字体，字号与字重全乱。 */
   font-family: inherit;
   font-size: 12px;
   line-height: 1.6;
 }
+/* popover 自带 ::backdrop，这里必须清掉底色：否则面板背后会多出一层压暗，看起来像又开了一个弹窗。 */
+/* pointer-events:none 让点击能穿透到页面上，由脚本统一处理「点外面关闭」，避免 backdrop 抢走点击。 */
 .glass-select-menu::backdrop { background: transparent; pointer-events: none; }
 .glass-select-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
+/* 文本与右侧勾选标记之间 16px：勾选是固定宽列，间距固定后长文本换行时右侧仍能对齐。 */
   gap: 16px;
   min-height: 36px;
   padding: 8px 10px;
   border-radius: 10px;
   cursor: pointer;
+/* 选项行固定 36px 高：鼠标移入的区域必须够大，键盘高亮项与鼠标悬停项才能落在同一行高上。 */
+/* overflow-wrap:anywhere 允许长科目名折行：财务科目名常有连续无空格的长串，不折行会撑破 200px 宽的面板。 */
   overflow-wrap: anywhere;
   transition: background 120ms, color 120ms;
 }
+/* 选中项用淡蓝底加 600 字重，而不是打勾图标：勾选标记单独放在右侧（.glass-select-check），两层信息不互相挤压。 */
+/* aria-selected 由脚本按原生 select 的 selectedIndex 同步，所以样式与真实表单状态永远一致。 */
+/* 下拉里选中项同时是「当前值」和「键盘初始位置」，样式必须让用户一眼看出面板打开时会停在哪一项。 */
 .glass-select-option[aria-selected="true"] { color: #2f65ce; background: rgba(222, 235, 255, .6); font-weight: 600; }
+/* 键盘高亮项用比选中项更浅的蓝：两者必须能同时存在（选中的 A + 高亮的 B），颜色接近但不相同。 */
+/* is-focused 由脚本随 aria-activedescendant 一起移动：鼠标移动也会更新它，保证指针与键盘共用同一套高亮。 */
 .glass-select-option.is-focused { background: rgba(217, 232, 255, .85); color: #2f65ce; }
+/* 禁用项仍然显示（不隐藏）：用户需要知道「有这一项但当前不可选」，而不是疑惑选项凭空消失。 */
+/* 降低对比度并改 not-allowed 光标，同时脚本会阻止 click 与 Enter 提交。 */
 .glass-select-option[aria-disabled="true"] { color: #9aa7bb; opacity: .65; cursor: not-allowed; }
+/* 勾选列固定 16px 且默认 visibility:hidden：不可见但仍占位，未选中项的右侧才不会塌陷。 */
+/* 用 visibility 而不是 display:none：两者都不可见，但前者保留布局，面板内各行文本的右边界才能对齐。 */
 .glass-select-check { display: flex; flex: 0 0 16px; visibility: hidden; }
+/* 同为 16px 方块图标：与箭头的尺寸保持同一套图标栅格（24 网格线性图标缩放到 16）。 */
 .glass-select-check svg { display: block; width: 16px; height: 16px; }
+/* 只有选中项显示勾：与选中项底色、字重共同构成三重确认，不依赖单一颜色（色觉障碍用户也能分辨）。 */
 .glass-select-option[aria-selected="true"] .glass-select-check { visibility: visible; }
+/* 分组小标题（optgroup 的 label）比选项更小更淡，位置略靠上：它只是导航标签，不应被读成可选项。 */
+/* 脚本用 role=group + aria-label 承载语义，这里的样式只负责视觉层级。 */
 .glass-select-group { padding: 8px 10px 4px; font-size: 11px; color: var(--muted, #72839c); }
+/* 空态提示与选项同样的内边距：面板打开但无内容时，仍然要有一个可读的矩形区域，而不是一条空白条。 */
+/* 文案「暂无可选项」由脚本注入，属于确定性提示，不是 AI 生成内容。 */
 .glass-select-empty { padding: 12px; color: var(--muted, #72839c); }
+/* 移动端三条调整：紧凑形态再收窄到 88px 并把箭头间距压到 4px，筛选器最小宽度降到 136px。 */
+/* 选项行提高到 40px：手指点击的容错范围必须比鼠标大，这是移动端可访问性的硬要求。 */
+/* 字号降到 11px 只作用于紧凑形态，正文与选项字号不变，避免整体缩小导致难读。 */
 @media(max-width: 760px) {
   .glass-select-compact { max-width: 88px; font-size: 11px; gap: 4px; padding-left: 4px; padding-right: 4px; }
   .glass-select-filter { min-width: 136px; }
   .glass-select-option { min-height: 40px; }
 }
+/* 减少动效模式下把三个部件的过渡全部关掉：这类控件每次点击都会触发状态切换，动画累积起来最易引发不适。 */
+/* 只关过渡不关状态变化：箭头角度、底色、高亮仍然即时切换，功能不受影响。 */
 @media(prefers-reduced-motion: reduce) {
   .glass-select-trigger, .glass-select-arrow, .glass-select-option { transition: none; }
 }
+/* 浏览器不支持毛玻璃时退回接近纯白的底：面板必须保持不透明，否则下层表格数字会透上来干扰阅读。 */
+/* 这是「宁可失去材质，也要保证可读」的降级原则，与 玻璃主题.css 的降级分支同向。 */
 @supports not (backdrop-filter: blur(1px)) {
   .glass-select-menu { background: #f7faff; }
 }
+/* 打印与导出报告时隐藏整个下拉面板：面板是交互态的临时浮层，不该出现在纸质内容里。 */
+/* !important 是必要的，因为面板由脚本动态插入到 body 末尾，普通的层叠顺序压不住它。 */
 @media print {
   .glass-select-menu { display: none !important; }
 }

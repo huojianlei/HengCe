@@ -621,6 +621,21 @@ def import_excel_v11(data, name='标准模板.xlsx'):  # 总入口
     from excel_ingest_v2 import V2_SHEETS, import_v2  # 延迟导入（老轨不依赖新模块）
     if names == V2_SHEETS:  # 九表走 v2 轨道
         return import_v2(data, name)  # v2 链（自带校验，输出结构与 v1 同构）
+    # v3 轨道：v2 九表 + 第十张「部门明细表」（表内部门维度）——表序列判据
+    from excel_ingest_v3 import V3_SHEETS, import_v3  # 延迟导入（v2 轨不依赖 v3）
+    if names == V3_SHEETS:  # 十表走 v3 轨道
+        return import_v3(data, name)  # v3 链（九表复用 v2 全套校验 + 部门勾稽）
+    # v3k 轨道：十表 + 第十一张「非财务指标」（六项非财务 KPI 数据源）
+    from excel_ingest_v3_kpi import V3_SHEETS as V3K_SHEETS, import_v3_kpi
+    if names == V3K_SHEETS:  # 十一表走 v3k 轨道
+        return import_v3_kpi(data, name)  # v3k 链（十表校验 + 非财务指标表校验）
+    # v3s/v3sk 轨道：十表 + 量价拆分（+ 可选非财务指标）
+    from excel_ingest_v3s import (V3_SHEETS as V3S_SHEETS, V3SK_SHEETS,
+                                  import_v3s)
+    if names == V3S_SHEETS:  # 十一表走 v3s 轨道
+        return import_v3s(data, name)  # v3s 链（十表校验 + 量价拆分表校验）
+    if names == V3SK_SHEETS:  # 十二表走 v3sk 轨道（量价 + 非财务同册）
+        return import_v3s(data, name)  # v3sk 链（表序列在链内二次判定）
     # 外部两套版式走本包 v1.2 fork（B1 版本钉双轨：老串照收、中性串放行）
     from external_templates_v12 import industry, changes  # 外部两版式 fork（1.0.5 只读）
     if names == ('批次信息', '基准指标'):  # 行业对标结构
