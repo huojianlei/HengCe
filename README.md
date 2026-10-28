@@ -1,7 +1,7 @@
 # 衡策（HengCe）· 财务智能体
 
 
-##本仓库为临时快照版本，是deepseek harness的插件，不能直接安装生效，需要agent进行辅助安装
+## 本仓库为临时快照版本，是deepseek harness的插件，不能直接安装生效，需要agent进行辅助安装
 
 
 > 四类固定 Excel 模板进 → 12 表/9 表契约校验 → 十五步分析 → 计算报告（md/html/PDF，
